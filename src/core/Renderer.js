@@ -1,5 +1,5 @@
 /**
- * Renderer - Encapsula Three.js con cámara ortográfica
+ * Renderer - Three.js con cámara ortográfica pixel-perfect
  */
 import * as THREE from 'three';
 
@@ -9,7 +9,6 @@ export class Renderer {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x0a0a0f);
 
-        // Cámara ortográfica para 2D pixel-perfect
         const aspect = window.innerWidth / window.innerHeight;
         const frustumSize = 600;
         this.frustumSize = frustumSize;
@@ -25,11 +24,10 @@ export class Renderer {
 
         this.webglRenderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
-            antialias: false,
-            pixelRatio: 1
+            antialias: false
         });
         this.webglRenderer.setSize(window.innerWidth, window.innerHeight);
-        this.webglRenderer.setPixelRatio(1); // Pixel-perfect
+        this.webglRenderer.setPixelRatio(1);
     }
 
     resize() {

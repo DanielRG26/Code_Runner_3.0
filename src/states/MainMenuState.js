@@ -1,5 +1,6 @@
 /**
  * MainMenuState - Menú principal con estética cyberpunk pixel art
+ * Fondo oscuro, siluetas de Ecos, cables, perro robot C-R01 sentado
  */
 import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
@@ -8,15 +9,15 @@ import { createNeonButton } from '../utils/UIFactory.js';
 import { createRobotSprite } from '../entities/RobotSprite.js';
 
 export class MainMenuState {
-    constructor(stateManager, renderer) {
+    constructor(stateManager, renderer, audio) {
         this.stateManager = stateManager;
         this.renderer = renderer;
-        this.objects = [];
+        this.audio = audio;
         this.time = 0;
         this.cursorVisible = true;
         this.cursorTimer = 0;
-        this.hoveredButton = null;
         this.buttons = [];
+        this.hoveredBtn = null;
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         this.onMouseMove = this.onMouseMove.bind(this);
@@ -27,35 +28,38 @@ export class MainMenuState {
         const scene = this.renderer.scene;
         scene.background = new THREE.Color(0x080810);
 
-        // Fondo con siluetas de Ecos y cables
+        // Iniciar música
+        this.audio.startMusic();
+
+        // Fondo
         this.createBackground(scene);
 
         // Título: CODE RUNNER
-        this.titleText = PixelText.create('CODE RUNNER', 0, 180, 48, 0x00e5ff);
+        this.titleText = PixelText.create('CODE RUNNER', 0, 190, 52, 0x00e5ff);
         scene.add(this.titleText);
 
         // Subtítulo con cursor parpadeante
-        this.subtitleText = PixelText.create('FRAGMENTOS DE CONSCIENCIA_', 0, 120, 20, 0x88ccdd);
+        this.subtitleText = PixelText.create('FRAGMENTOS DE CONSCIENCIA_', 0, 125, 18, 0x88ccdd);
         scene.add(this.subtitleText);
 
-        // Robot C-R01 a la izquierda
-        this.robot = createRobotSprite(-260, -30, 80);
+        // Perro Robot C-R01 sentado a la izquierda
+        this.robot = createRobotSprite(-240, -40, 100, 'BLUE');
         scene.add(this.robot);
 
+        // Etiqueta C-R01
+        const label = PixelText.create('C-R01', -240, -105, 10, 0x88aacc);
+        scene.add(label);
+
         // Botones
-        const btnStart = createNeonButton('> INICIAR_SECUENCIA', 60, -20, 320, 50);
+        const btnStart = createNeonButton('> INICIAR_SECUENCIA', 80, -10, 320, 52);
         btnStart.userData = { action: 'start' };
         scene.add(btnStart);
         this.buttons.push(btnStart);
 
-        const btnLevels = createNeonButton('> SECTORES_DE_MEMORIA', 60, -90, 320, 50);
+        const btnLevels = createNeonButton('> SECTORES_DE_MEMORIA', 80, -80, 320, 52);
         btnLevels.userData = { action: 'levels' };
         scene.add(btnLevels);
         this.buttons.push(btnLevels);
-
-        // Etiqueta C-R01
-        const label = PixelText.create('C-R01', -260, -90, 10, 0x88aacc);
-        scene.add(label);
 
         // Eventos
         window.addEventListener('mousemove', this.onMouseMove);
@@ -63,12 +67,10 @@ export class MainMenuState {
     }
 
     createBackground(scene) {
-        // Fondo degradado oscuro
+        // Fondo con shader
         const bgGeo = new THREE.PlaneGeometry(1400, 700);
         const bgMat = new THREE.ShaderMaterial({
-            uniforms: {
-                uTime: { value: 0 }
-            },
+            uniforms: { uTime: { value: 0 } },
             vertexShader: `
                 varying vec2 vUv;
                 void main() {
@@ -80,10 +82,13 @@ export class MainMenuState {
                 uniform float uTime;
                 varying vec2 vUv;
                 void main() {
-                    vec3 col = mix(vec3(0.03, 0.03, 0.06), vec3(0.06, 0.08, 0.12), vUv.y);
-                    // Líneas de escaneo
-                    float scan = sin(vUv.y * 300.0 + uTime * 2.0) * 0.02;
+                    vec3 col = mix(vec3(0.02, 0.02, 0.05), vec3(0.05, 0.06, 0.1), vUv.y);
+                    // Scanlines
+                    float scan = sin(vUv.y * 400.0 + uTime * 1.5) * 0.015;
                     col += scan;
+                    // Interferencia estática sutil
+                    float noise = fract(sin(dot(vUv + uTime * 0.01, vec2(12.9898, 78.233))) * 43758.5453);
+                    col += noise * 0.008;
                     gl_FragColor = vec4(col, 1.0);
                 }
             `
@@ -94,15 +99,14 @@ export class MainMenuState {
         this.bgMaterial = bgMat;
 
         // Siluetas de Ecos (robots fallidos)
-        const echoPositions = [-500, -350, 350, 480];
-        echoPositions.forEach(x => {
-            const echo = this.createEchoSilhouette(x, -80 + Math.random() * 40);
+        [-500, -380, 360, 480, 550].forEach(x => {
+            const echo = this.createEchoSilhouette(x, -100 + Math.random() * 50);
             scene.add(echo);
         });
 
         // Cables colgantes
-        for (let i = 0; i < 8; i++) {
-            const cable = this.createCable(-600 + i * 170, 300);
+        for (let i = 0; i < 10; i++) {
+            const cable = this.createCable(-600 + i * 135, 300, 120 + Math.random() * 100);
             scene.add(cable);
         }
     }
@@ -110,37 +114,33 @@ export class MainMenuState {
     createEchoSilhouette(x, y) {
         const group = new THREE.Group();
         // Cuerpo
-        const bodyGeo = new THREE.PlaneGeometry(30, 50);
-        const bodyMat = new THREE.MeshBasicMaterial({ color: 0x151520, transparent: true, opacity: 0.7 });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        group.add(body);
-        // Ojos brillantes
-        const eyeGeo = new THREE.PlaneGeometry(4, 4);
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x334455, transparent: true, opacity: 0.5 });
+        const bodyGeo = new THREE.PlaneGeometry(28, 52);
+        const bodyMat = new THREE.MeshBasicMaterial({
+            color: 0x111118, transparent: true, opacity: 0.75
+        });
+        group.add(new THREE.Mesh(bodyGeo, bodyMat));
+        // Ojos tenues
+        const eyeGeo = new THREE.PlaneGeometry(3, 3);
+        const eyeMat = new THREE.MeshBasicMaterial({
+            color: 0x223344, transparent: true, opacity: 0.4
+        });
         const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeL.position.set(-6, 12, 0.1);
+        eyeL.position.set(-5, 14, 0.1);
         const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeR.position.set(6, 12, 0.1);
+        eyeR.position.set(5, 14, 0.1);
         group.add(eyeL, eyeR);
         group.position.set(x, y, -5);
         return group;
     }
 
-    createCable(x, y) {
-        const points = [];
-        const segments = 8;
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            points.push(new THREE.Vector3(
-                x + Math.sin(t * 3) * 10,
-                y - t * 200,
-                -3
-            ));
-        }
-        const curve = new THREE.CatmullRomCurve3(points);
-        const geo = new THREE.TubeGeometry(curve, 12, 1.5, 4, false);
-        const mat = new THREE.MeshBasicMaterial({ color: 0x1a1a2a });
-        return new THREE.Mesh(geo, mat);
+    createCable(x, startY, length) {
+        const geo = new THREE.PlaneGeometry(1.5, length);
+        const mat = new THREE.MeshBasicMaterial({
+            color: 0x181828, transparent: true, opacity: 0.5
+        });
+        const cable = new THREE.Mesh(geo, mat);
+        cable.position.set(x + Math.sin(x) * 5, startY - length / 2, -4);
+        return cable;
     }
 
     onMouseMove(e) {
@@ -153,6 +153,7 @@ export class MainMenuState {
         for (const btn of this.buttons) {
             const intersects = this.raycaster.intersectObject(btn, true);
             if (intersects.length > 0) {
+                this.audio.playClick();
                 const action = btn.userData.action;
                 if (action === 'start' || action === 'levels') {
                     this.stateManager.changeState(STATES.LEVEL_SELECT);
@@ -171,39 +172,42 @@ export class MainMenuState {
             this.cursorTimer = 0;
             this.cursorVisible = !this.cursorVisible;
             if (this.subtitleText) {
-                const text = this.cursorVisible
-                    ? 'FRAGMENTOS DE CONSCIENCIA_'
-                    : 'FRAGMENTOS DE CONSCIENCIA ';
-                // Actualizar opacidad del último carácter simulando cursor
-                this.subtitleText.material.opacity = this.cursorVisible ? 1.0 : 0.85;
+                this.subtitleText.material.opacity = this.cursorVisible ? 1.0 : 0.8;
             }
         }
 
-        // Animación del fondo
+        // Fondo animado
         if (this.bgMaterial) {
             this.bgMaterial.uniforms.uTime.value = this.time;
         }
 
         // Hover en botones
         this.raycaster.setFromCamera(this.mouse, this.renderer.camera);
-        let hovered = null;
+        let newHovered = null;
         for (const btn of this.buttons) {
             const intersects = this.raycaster.intersectObject(btn, true);
             if (intersects.length > 0) {
-                hovered = btn;
+                newHovered = btn;
                 break;
             }
         }
+        // Sonido de hover
+        if (newHovered && newHovered !== this.hoveredBtn) {
+            this.audio.playHover();
+        }
+        this.hoveredBtn = newHovered;
+
+        // Actualizar brillo de bordes
         for (const btn of this.buttons) {
             const border = btn.children.find(c => c.userData.isBorder);
             if (border) {
-                border.material.opacity = (btn === hovered) ? 1.0 : 0.7;
+                border.material.opacity = (btn === this.hoveredBtn) ? 1.0 : 0.6;
             }
         }
 
-        // Animación robot flotante
+        // Robot flotante
         if (this.robot) {
-            this.robot.position.y = -30 + Math.sin(this.time * 2) * 5;
+            this.robot.position.y = -40 + Math.sin(this.time * 1.8) * 5;
         }
     }
 
@@ -211,5 +215,6 @@ export class MainMenuState {
         window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('click', this.onClick);
         this.buttons = [];
+        this.audio.stopMusic();
     }
 }

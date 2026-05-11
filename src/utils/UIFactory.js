@@ -1,84 +1,60 @@
 /**
- * UIFactory - Creación de elementos UI con estética neón cyberpunk
+ * UIFactory - Botones con estética neón cyberpunk
  */
 import * as THREE from 'three';
 import { PixelText } from './PixelText.js';
 
 /**
  * Crea un botón con borde neón cian
- * @param {string} text - Texto del botón
- * @param {number} x - Posición X
- * @param {number} y - Posición Y
- * @param {number} width - Ancho
- * @param {number} height - Alto
- * @returns {THREE.Group}
  */
 export function createNeonButton(text, x, y, width, height) {
     const group = new THREE.Group();
     group.position.set(x, y, 0);
 
-    // Fondo oscuro del botón
+    // Fondo oscuro
     const bgGeo = new THREE.PlaneGeometry(width, height);
     const bgMat = new THREE.MeshBasicMaterial({
         color: 0x0a1520,
         transparent: true,
-        opacity: 0.85
+        opacity: 0.88
     });
-    const bg = new THREE.Mesh(bgGeo, bgMat);
-    bg.position.z = 0;
-    group.add(bg);
+    group.add(new THREE.Mesh(bgGeo, bgMat));
 
-    // Borde neón (4 líneas)
+    // Borde neón (4 lados)
     const borderColor = 0x00e5ff;
-    const borderThickness = 2;
+    const t = 2; // grosor
 
-    const borderMat = new THREE.MeshBasicMaterial({
-        color: borderColor,
-        transparent: true,
-        opacity: 0.7
-    });
+    const createBorderSide = (w, h, px, py) => {
+        const geo = new THREE.PlaneGeometry(w, h);
+        const mat = new THREE.MeshBasicMaterial({
+            color: borderColor,
+            transparent: true,
+            opacity: 0.6
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(px, py, 0.1);
+        mesh.userData.isBorder = true;
+        return mesh;
+    };
 
-    // Top
-    const topGeo = new THREE.PlaneGeometry(width, borderThickness);
-    const top = new THREE.Mesh(topGeo, borderMat.clone());
-    top.position.set(0, height / 2, 0.1);
-    top.userData.isBorder = true;
-    group.add(top);
+    group.add(createBorderSide(width, t, 0, height / 2));   // Top
+    group.add(createBorderSide(width, t, 0, -height / 2));  // Bottom
+    group.add(createBorderSide(t, height, -width / 2, 0));  // Left
+    group.add(createBorderSide(t, height, width / 2, 0));   // Right
 
-    // Bottom
-    const bottomGeo = new THREE.PlaneGeometry(width, borderThickness);
-    const bottom = new THREE.Mesh(bottomGeo, borderMat.clone());
-    bottom.position.set(0, -height / 2, 0.1);
-    bottom.userData.isBorder = true;
-    group.add(bottom);
-
-    // Left
-    const leftGeo = new THREE.PlaneGeometry(borderThickness, height);
-    const left = new THREE.Mesh(leftGeo, borderMat.clone());
-    left.position.set(-width / 2, 0, 0.1);
-    left.userData.isBorder = true;
-    group.add(left);
-
-    // Right
-    const rightGeo = new THREE.PlaneGeometry(borderThickness, height);
-    const right = new THREE.Mesh(rightGeo, borderMat.clone());
-    right.position.set(width / 2, 0, 0.1);
-    right.userData.isBorder = true;
-    group.add(right);
-
-    // Glow exterior
-    const glowGeo = new THREE.PlaneGeometry(width + 8, height + 8);
+    // Glow exterior sutil
+    const glowGeo = new THREE.PlaneGeometry(width + 10, height + 10);
     const glowMat = new THREE.MeshBasicMaterial({
         color: borderColor,
         transparent: true,
-        opacity: 0.08
+        opacity: 0.06
     });
     const glow = new THREE.Mesh(glowGeo, glowMat);
     glow.position.z = -0.1;
     group.add(glow);
 
     // Texto
-    const textMesh = PixelText.create(text, 0, 0, 13, 0x00e5ff);
+    const textMesh = PixelText.create(text, 0, 0, 12, 0x00e5ff);
     textMesh.position.z = 0.2;
     group.add(textMesh);
 

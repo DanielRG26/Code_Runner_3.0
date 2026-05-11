@@ -1,6 +1,7 @@
 /**
  * GameplayState - Lógica principal del Nivel 1
  * Mecánica: Ingreso de comandos secuenciales + sistema de dualidad
+ * Sonido integrado para pasos, colisiones, fragmentos
  */
 import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
@@ -9,9 +10,10 @@ import { Player } from '../entities/Player.js';
 import { CommandSystem } from '../systems/CommandSystem.js';
 
 export class GameplayState {
-    constructor(stateManager, renderer, params) {
+    constructor(stateManager, renderer, audio, params) {
         this.stateManager = stateManager;
         this.renderer = renderer;
+        this.audio = audio;
         this.levelIndex = params.level || 1;
         this.time = 0;
         this.gameTime = 0;
@@ -45,7 +47,10 @@ export class GameplayState {
 
     enter() {
         const scene = this.renderer.scene;
-        scene.background = new THREE.Color(0x050508);
+        scene.background = new THREE.Color(0x040406);
+
+        // Música ambiental
+        this.audio.startMusic();
 
         // Crear nivel
         this.level = new Level1(scene);
@@ -55,7 +60,7 @@ export class GameplayState {
         this.player = new Player(scene, this.level.spawnPoint.x, this.level.spawnPoint.y);
 
         // Sistema de comandos
-        this.commandSystem = new CommandSystem(this.player, this.level);
+        this.commandSystem = new CommandSystem(this.player, this.level, this.audio);
 
         // Mostrar UI
         this.commandPanel.style.display = 'block';
@@ -84,8 +89,8 @@ export class GameplayState {
             e.preventDefault();
             this.executeCommands();
         } else if ((e.key === 'x' || e.key === 'X') && document.activeElement !== this.commandInput) {
-            // Toggle estado solo si no estamos escribiendo en el input
             this.player.toggleState();
+            this.audio.playStateChange();
             this.updateStateIndicator();
         }
     }
@@ -112,13 +117,15 @@ export class GameplayState {
         this.commandInput.value = '';
         this.isExecuting = true;
 
+        // Animación PROGRAMMED mientras se ejecuta
+        this.player.setAnimation('PROGRAMMED');
+
         this.commandSystem.execute(commands, () => {
             this.isExecuting = false;
             this.commandQueue.textContent = 'Cola: [vacía] - Listo para nuevos comandos';
             this.commandInput.focus();
             this.checkGameState();
         }, () => {
-            // Callback por cada paso - verificar colisiones intermedias
             return this.checkStepCollisions();
         });
     }
@@ -126,21 +133,22 @@ export class GameplayState {
     updateStateIndicator() {
         if (this.player.state === 'RED') {
             this.stateIndicator.className = 'red';
-            this.stateIndicator.textContent = 'ESTADO: LÓGICA [ROJO]';
+            this.stateIndicator.textContent = 'ESTADO: LÓGICA ■';
         } else {
             this.stateIndicator.className = 'blue';
-            this.stateIndicator.textContent = 'ESTADO: EMOCIÓN [AZUL]';
+            this.stateIndicator.textContent = 'ESTADO: EMOCIÓN ●';
         }
         this.stateIndicator.style.display = 'block';
     }
 
     checkGameState() {
-        // Verificar colisión con fragmentos
         const collected = this.level.checkFragmentCollection(this.player);
-        this.fragmentsCollected += collected;
+        if (collected > 0) {
+            this.fragmentsCollected += collected;
+            this.audio.playCollectFragment();
+        }
         this.hudFragments.textContent = `FRAGMENTOS: ${this.fragmentsCollected}/${this.totalFragments}`;
 
-        // Verificar colisión con láseres
         if (this.level.checkLaserCollision(this.player)) {
             if (this.player.state !== 'RED') {
                 this.handleDeath();
@@ -148,44 +156,37 @@ export class GameplayState {
             }
         }
 
-        // Verificar si llegó al final
         if (this.level.checkGoalReached(this.player)) {
             if (this.fragmentsCollected >= this.totalFragments) {
                 this.handleLevelComplete();
             }
         }
 
-        // Verificar caída
         if (this.player.position.y < this.level.deathY) {
             this.handleDeath();
         }
     }
 
-    /**
-     * Verificación de colisiones después de cada paso individual
-     * @returns {boolean} true si debe abortar la secuencia
-     */
     checkStepCollisions() {
-        // Recoger fragmentos en cada paso
         const collected = this.level.checkFragmentCollection(this.player);
-        this.fragmentsCollected += collected;
+        if (collected > 0) {
+            this.fragmentsCollected += collected;
+            this.audio.playCollectFragment();
+        }
         this.hudFragments.textContent = `FRAGMENTOS: ${this.fragmentsCollected}/${this.totalFragments}`;
 
-        // Verificar láser
         if (this.level.checkLaserCollision(this.player)) {
             if (this.player.state !== 'RED') {
                 this.handleDeath();
-                return true; // Abortar
+                return true;
             }
         }
 
-        // Verificar caída
         if (this.player.position.y < this.level.deathY) {
             this.handleDeath();
             return true;
         }
 
-        // Verificar meta
         if (this.level.checkGoalReached(this.player) && this.fragmentsCollected >= this.totalFragments) {
             this.handleLevelComplete();
             return true;
@@ -197,13 +198,12 @@ export class GameplayState {
     handleDeath() {
         this.gameOver = true;
         this.commandPanel.style.display = 'none';
-
-        // Flash rojo
+        this.audio.playError();
         this.player.playDeathAnimation();
 
         setTimeout(() => {
             this.resetLevel();
-        }, 1000);
+        }, 1200);
     }
 
     resetLevel() {
@@ -220,14 +220,15 @@ export class GameplayState {
         this.commandPanel.style.display = 'block';
         this.commandInput.value = '';
         this.commandInput.focus();
-        this.commandQueue.textContent = 'Cola: [vacía] - Robot reiniciado';
+        this.commandQueue.textContent = 'Cola: [vacía] - C-R01 reiniciado';
+        this.updateStateIndicator();
     }
 
     handleLevelComplete() {
         this.levelComplete = true;
         this.commandPanel.style.display = 'none';
+        this.audio.playLevelComplete();
 
-        // Calcular estrellas
         const stars = this.calculateStars();
         this.starsDisplay.textContent = '★ '.repeat(stars) + '☆ '.repeat(3 - stars);
         this.completeInfo.textContent = `Tiempo: ${Math.floor(this.gameTime)}s | Fragmentos: ${this.fragmentsCollected}/${this.totalFragments}`;
@@ -235,19 +236,21 @@ export class GameplayState {
     }
 
     calculateStars() {
-        let stars = 1; // Completar = 1 estrella
+        let stars = 1;
         if (this.fragmentsCollected >= this.totalFragments) stars++;
-        if (this.gameTime < 30) stars++; // Menos de 30s = 3 estrellas
+        if (this.gameTime < 30) stars++;
         return stars;
     }
 
     onRetry() {
+        this.audio.playClick();
         this.levelCompleteUI.style.display = 'none';
         this.levelComplete = false;
         this.resetLevel();
     }
 
     onMenu() {
+        this.audio.playClick();
         this.levelCompleteUI.style.display = 'none';
         this.stateManager.changeState(STATES.MAIN_MENU);
     }
@@ -259,7 +262,6 @@ export class GameplayState {
             this.hudTime.textContent = `TIEMPO: ${Math.floor(this.gameTime)}s`;
         }
 
-        // Actualizar sistemas
         if (this.commandSystem) {
             this.commandSystem.update(delta);
         }
@@ -276,10 +278,10 @@ export class GameplayState {
         this.btnRetry.removeEventListener('click', this.onRetry);
         this.btnMenu.removeEventListener('click', this.onMenu);
 
-        // Ocultar UI
         this.commandPanel.style.display = 'none';
         this.hud.style.display = 'none';
         this.stateIndicator.style.display = 'none';
         this.levelCompleteUI.style.display = 'none';
+        this.audio.stopMusic();
     }
 }

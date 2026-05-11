@@ -1,18 +1,18 @@
 /**
  * CommandSystem - Procesa secuencias de comandos del jugador
- * El robot ejecuta los comandos uno a uno con animación
+ * El perro robot ejecuta los comandos uno a uno con animación y sonido
  */
 export class CommandSystem {
-    constructor(player, level) {
+    constructor(player, level, audio) {
         this.player = player;
         this.level = level;
+        this.audio = audio;
         this.queue = [];
         this.isExecuting = false;
         this.currentCommand = null;
         this.commandTimer = 0;
-        this.commandDuration = 0.4;
         this.onComplete = null;
-        this.onStepComplete = null; // Callback por cada paso
+        this.onStepComplete = null;
         this.stepSize = 40;
         this.jumpHeight = 80;
         this.aborted = false;
@@ -65,19 +65,22 @@ export class CommandSystem {
                 break;
             case 'JUMP':
                 targetY = pos.y + this.jumpHeight;
+                this.player.setAnimation('JUMP');
                 break;
             case 'TOGGLE':
                 this.player.toggleState();
-                setTimeout(() => this.processNext(), 100);
+                this.audio.playStateChange();
+                setTimeout(() => this.processNext(), 120);
                 return;
         }
 
-        // Verificar colisión con plataformas antes de mover
+        // Verificar si puede moverse
         const canMove = this.level.canMoveTo(targetX, targetY, this.player.size);
         if (canMove) {
             this.player.moveTo(targetX, targetY);
+            this.audio.playStep();
         } else {
-            // No puede moverse, pasar al siguiente comando
+            // No puede moverse, pasar al siguiente
             setTimeout(() => this.processNext(), 100);
         }
     }
@@ -90,12 +93,12 @@ export class CommandSystem {
 
         // Esperar a que el jugador termine de moverse
         if (!this.player.isMoving && this.commandTimer > 0.15) {
-            // Aplicar gravedad después de cada movimiento
+            // Aplicar gravedad
             this.applyGravity();
             this.currentCommand = null;
             this.commandTimer = 0;
 
-            // Notificar paso completado (para verificar colisiones)
+            // Verificar colisiones por paso
             if (this.onStepComplete) {
                 const shouldAbort = this.onStepComplete();
                 if (shouldAbort) {
@@ -104,7 +107,7 @@ export class CommandSystem {
                 }
             }
 
-            // Pequeña pausa entre comandos
+            // Pausa entre comandos
             setTimeout(() => this.processNext(), 80);
         }
     }
@@ -114,7 +117,6 @@ export class CommandSystem {
         const groundY = this.level.getGroundAt(pos.x, pos.y);
 
         if (pos.y > groundY + this.player.size / 2) {
-            // Caer hasta la plataforma más cercana debajo
             this.player.position.y = groundY + this.player.size / 2;
             this.player.targetPosition.y = this.player.position.y;
             this.player.updatePosition();

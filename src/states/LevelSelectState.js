@@ -5,13 +5,16 @@ import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
 import { PixelText } from '../utils/PixelText.js';
 import { createNeonButton } from '../utils/UIFactory.js';
+import { createRobotSprite } from '../entities/RobotSprite.js';
 
 export class LevelSelectState {
-    constructor(stateManager, renderer) {
+    constructor(stateManager, renderer, audio) {
         this.stateManager = stateManager;
         this.renderer = renderer;
+        this.audio = audio;
         this.buttons = [];
         this.time = 0;
+        this.hoveredBtn = null;
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         this.onMouseMove = this.onMouseMove.bind(this);
@@ -22,14 +25,19 @@ export class LevelSelectState {
         const scene = this.renderer.scene;
         scene.background = new THREE.Color(0x080810);
 
-        // Fondo
         this.createBackground(scene);
 
         // Título
-        const title = PixelText.create('CODE RUNNER', 0, 240, 36, 0x00e5ff);
+        const title = PixelText.create('CODE RUNNER', 0, 250, 38, 0x00e5ff);
         scene.add(title);
-        const subtitle = PixelText.create('FRAGMENTOS DE CONSCIENCIA_', 0, 195, 14, 0x88ccdd);
+        const subtitle = PixelText.create('FRAGMENTOS DE CONSCIENCIA_', 0, 205, 13, 0x88ccdd);
         scene.add(subtitle);
+
+        // Robot C-R01 a la izquierda
+        const robot = createRobotSprite(-320, 0, 80, 'BLUE');
+        scene.add(robot);
+        const label = PixelText.create('C-R01', -320, -55, 9, 0x88aacc);
+        scene.add(label);
 
         // Niveles
         const levels = [
@@ -41,19 +49,18 @@ export class LevelSelectState {
             { name: '> NIVEL_5', icon: '✦', unlocked: false }
         ];
 
-        const startY = 120;
-        const spacing = 60;
+        const startY = 140;
+        const spacing = 55;
 
         levels.forEach((level, i) => {
             const y = startY - i * spacing;
-            const btn = createNeonButton(level.name, 0, y, 340, 44);
+            const btn = createNeonButton(level.name, 40, y, 300, 42);
             btn.userData = { action: 'level', levelIndex: i, unlocked: level.unlocked };
 
             if (!level.unlocked) {
-                // Oscurecer botones bloqueados
                 btn.children.forEach(child => {
                     if (child.material) {
-                        child.material.opacity = 0.3;
+                        child.material.opacity = Math.min(child.material.opacity, 0.3);
                     }
                 });
             }
@@ -62,18 +69,15 @@ export class LevelSelectState {
             this.buttons.push(btn);
 
             // Icono a la derecha
-            if (level.unlocked) {
-                const iconMesh = PixelText.create('▶', 200, y, 12, 0x00e5ff);
-                scene.add(iconMesh);
-            } else {
-                const lockIcon = PixelText.create('🔒', 200, y, 12, 0x555555);
-                scene.add(lockIcon);
-            }
+            const iconText = level.unlocked ? '▶' : '🔒';
+            const iconColor = level.unlocked ? 0x00e5ff : 0x444444;
+            const icon = PixelText.create(iconText, 230, y, 11, iconColor);
+            scene.add(icon);
         });
 
         // Botón volver
-        const btnBack = createNeonButton('< VOLVER AL MENÚ', 0, startY - levels.length * spacing - 20, 280, 40);
-        btnBack.userData = { action: 'back' };
+        const btnBack = createNeonButton('< VOLVER AL MENU', 40, startY - levels.length * spacing - 20, 260, 38);
+        btnBack.userData = { action: 'back', unlocked: true };
         scene.add(btnBack);
         this.buttons.push(btnBack);
 
@@ -97,13 +101,16 @@ export class LevelSelectState {
                 uniform float uTime;
                 varying vec2 vUv;
                 void main() {
-                    vec3 col = mix(vec3(0.03, 0.03, 0.06), vec3(0.05, 0.06, 0.1), vUv.y);
-                    float scan = sin(vUv.y * 400.0 + uTime) * 0.015;
+                    vec3 col = mix(vec3(0.02, 0.02, 0.05), vec3(0.04, 0.05, 0.08), vUv.y);
+                    float scan = sin(vUv.y * 500.0 + uTime) * 0.012;
                     col += scan;
-                    // Grid sutil
-                    float gx = step(0.98, fract(vUv.x * 40.0));
-                    float gy = step(0.98, fract(vUv.y * 25.0));
-                    col += (gx + gy) * 0.02;
+                    // Grid de circuito
+                    float gx = step(0.985, fract(vUv.x * 35.0));
+                    float gy = step(0.985, fract(vUv.y * 22.0));
+                    col += (gx + gy) * 0.015;
+                    // Noise
+                    float noise = fract(sin(dot(vUv + uTime * 0.005, vec2(12.9898, 78.233))) * 43758.5453);
+                    col += noise * 0.006;
                     gl_FragColor = vec4(col, 1.0);
                 }
             `
@@ -114,25 +121,27 @@ export class LevelSelectState {
         this.bgMaterial = bgMat;
 
         // Siluetas de Ecos
-        const positions = [-480, -380, 400, 520];
-        positions.forEach(x => {
-            const echo = this.createEcho(x, -100 + Math.random() * 30);
+        [400, 480, 550].forEach(x => {
+            const echo = this.createEcho(x, -80 + Math.random() * 30);
             scene.add(echo);
         });
     }
 
     createEcho(x, y) {
         const group = new THREE.Group();
-        const bodyGeo = new THREE.PlaneGeometry(28, 48);
-        const bodyMat = new THREE.MeshBasicMaterial({ color: 0x121220, transparent: true, opacity: 0.6 });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        group.add(body);
+        const bodyGeo = new THREE.PlaneGeometry(26, 46);
+        const bodyMat = new THREE.MeshBasicMaterial({
+            color: 0x0f0f18, transparent: true, opacity: 0.6
+        });
+        group.add(new THREE.Mesh(bodyGeo, bodyMat));
         const eyeGeo = new THREE.PlaneGeometry(3, 3);
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x223344, transparent: true, opacity: 0.4 });
+        const eyeMat = new THREE.MeshBasicMaterial({
+            color: 0x223344, transparent: true, opacity: 0.35
+        });
         const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeL.position.set(-5, 10, 0.1);
+        eyeL.position.set(-4, 10, 0.1);
         const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeR.position.set(5, 10, 0.1);
+        eyeR.position.set(4, 10, 0.1);
         group.add(eyeL, eyeR);
         group.position.set(x, y, -5);
         return group;
@@ -149,9 +158,11 @@ export class LevelSelectState {
             const intersects = this.raycaster.intersectObject(btn, true);
             if (intersects.length > 0) {
                 const { action, levelIndex, unlocked } = btn.userData;
+                if (!unlocked) break;
+                this.audio.playClick();
                 if (action === 'back') {
                     this.stateManager.changeState(STATES.MAIN_MENU);
-                } else if (action === 'level' && unlocked) {
+                } else if (action === 'level') {
                     this.stateManager.changeState(STATES.GAMEPLAY, { level: levelIndex });
                 }
                 break;
@@ -167,11 +178,24 @@ export class LevelSelectState {
 
         // Hover
         this.raycaster.setFromCamera(this.mouse, this.renderer.camera);
+        let newHovered = null;
         for (const btn of this.buttons) {
+            if (btn.userData.unlocked === false) continue;
             const intersects = this.raycaster.intersectObject(btn, true);
+            if (intersects.length > 0) {
+                newHovered = btn;
+                break;
+            }
+        }
+        if (newHovered && newHovered !== this.hoveredBtn) {
+            this.audio.playHover();
+        }
+        this.hoveredBtn = newHovered;
+
+        for (const btn of this.buttons) {
             const border = btn.children.find(c => c.userData.isBorder);
             if (border && btn.userData.unlocked !== false) {
-                border.material.opacity = intersects.length > 0 ? 1.0 : 0.7;
+                border.material.opacity = (btn === this.hoveredBtn) ? 1.0 : 0.6;
             }
         }
     }

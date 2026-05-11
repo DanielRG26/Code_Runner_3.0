@@ -4,6 +4,7 @@
 import { MainMenuState } from './MainMenuState.js';
 import { LevelSelectState } from './LevelSelectState.js';
 import { GameplayState } from './GameplayState.js';
+import { Transition } from '../core/Transition.js';
 
 export const STATES = {
     MAIN_MENU: 'MAIN_MENU',
@@ -12,38 +13,47 @@ export const STATES = {
 };
 
 export class GameStateManager {
-    constructor(renderer) {
+    constructor(renderer, audio) {
         this.renderer = renderer;
+        this.audio = audio;
         this.currentState = null;
-        this.states = {};
+        this.transitioning = false;
     }
 
     changeState(stateName, params = {}) {
-        if (this.currentState) {
-            this.currentState.exit();
-        }
+        if (this.transitioning) return;
+        this.transitioning = true;
 
-        this.renderer.clearScene();
+        const doChange = () => {
+            if (this.currentState) {
+                this.currentState.exit();
+            }
+            this.renderer.clearScene();
 
-        switch (stateName) {
-            case STATES.MAIN_MENU:
-                this.currentState = new MainMenuState(this, this.renderer);
-                break;
-            case STATES.LEVEL_SELECT:
-                this.currentState = new LevelSelectState(this, this.renderer);
-                break;
-            case STATES.GAMEPLAY:
-                this.currentState = new GameplayState(this, this.renderer, params);
-                break;
-        }
+            switch (stateName) {
+                case STATES.MAIN_MENU:
+                    this.currentState = new MainMenuState(this, this.renderer, this.audio);
+                    break;
+                case STATES.LEVEL_SELECT:
+                    this.currentState = new LevelSelectState(this, this.renderer, this.audio);
+                    break;
+                case STATES.GAMEPLAY:
+                    this.currentState = new GameplayState(this, this.renderer, this.audio, params);
+                    break;
+            }
 
-        if (this.currentState) {
-            this.currentState.enter();
-        }
+            if (this.currentState) {
+                this.currentState.enter();
+            }
+            this.transitioning = false;
+        };
+
+        // Usar transición glitch
+        Transition.play(doChange);
     }
 
     update(delta) {
-        if (this.currentState) {
+        if (this.currentState && !this.transitioning) {
             this.currentState.update(delta);
         }
     }
