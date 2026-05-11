@@ -55,6 +55,11 @@ export class GameplayState {
         this.btnPauseMenu = document.getElementById('btn-pause-menu');
 
         this.isPaused = false;
+        this.gameMessage = document.getElementById('game-message');
+        this.gameMessageHeader = this.gameMessage.querySelector('.msg-header');
+        this.gameMessageBody = this.gameMessage.querySelector('.msg-body');
+        this.messageTimer = 0;
+        this.messageVisible = false;
 
         this.onKeyDown = this.onKeyDown.bind(this);
         this.onKeyUp = this.onKeyUp.bind(this);
@@ -222,6 +227,14 @@ export class GameplayState {
     checkCollisions() {
         if (this.gameOver || this.levelComplete) return;
 
+        // Verificar triggers de mensajes (solo en introducción)
+        if (this.levelIndex === 0) {
+            const trigger = this.level.checkMessageTriggers(this.player);
+            if (trigger) {
+                this.showMessage(trigger.header, trigger.body, trigger.type);
+            }
+        }
+
         // Recoger fragmentos
         const collected = this.level.checkFragmentCollection(this.player);
         if (collected > 0) {
@@ -246,6 +259,20 @@ export class GameplayState {
         if (this.level.checkGoalReached(this.player)) {
             this.handleLevelComplete();
         }
+    }
+
+    showMessage(header, body, type = '') {
+        this.gameMessageHeader.textContent = header;
+        this.gameMessageBody.textContent = body;
+        this.gameMessage.className = type;
+        this.gameMessage.style.display = 'block';
+        this.messageVisible = true;
+        this.messageTimer = 0;
+    }
+
+    hideMessage() {
+        this.gameMessage.style.display = 'none';
+        this.messageVisible = false;
     }
 
     handleDeath() {
@@ -362,6 +389,14 @@ export class GameplayState {
         // Colisiones
         this.checkCollisions();
 
+        // Timer de mensajes (desaparecen después de 4 segundos)
+        if (this.messageVisible) {
+            this.messageTimer += delta;
+            if (this.messageTimer > 4.5) {
+                this.hideMessage();
+            }
+        }
+
         // Actualizar entidades
         if (this.player) {
             this.player.update(delta);
@@ -391,6 +426,7 @@ export class GameplayState {
         this.levelCompleteUI.style.display = 'none';
         this.gameOverUI.classList.remove('visible');
         this.pauseOverlay.classList.remove('visible');
+        this.gameMessage.style.display = 'none';
         this.audio.stopMusic();
     }
 }

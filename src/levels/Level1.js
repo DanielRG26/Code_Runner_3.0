@@ -46,6 +46,34 @@ export class Level1 {
 
         // Meta
         this.goalData = { x: 450, y: -70 };
+
+        // Triggers de mensajes (zonas que activan texto)
+        this.messageTriggers = [
+            {
+                x: -300, // Cerca del inicio
+                radius: 60,
+                type: '',
+                header: '> LOG DE SISTEMA',
+                body: 'Funciones motoras en línea. Detectando obstáculos en la trayectoria. Utiliza [W] para superar las plataformas.',
+                triggered: false
+            },
+            {
+                x: -140, // Antes del primer hueco
+                radius: 50,
+                type: 'warning',
+                header: '> ADVERTENCIA_CRÍTICA',
+                body: 'Brecha en el sector espacial. Peligro de caída al vacío de datos. Calcula tu salto con precisión para no dañar el chasis.',
+                triggered: false
+            },
+            {
+                x: -50, // Cerca del primer fragmento
+                radius: 55,
+                type: 'info',
+                header: '> ANOMALÍA DETECTADA',
+                body: 'Fragmento de memoria recuperable cerca. Asimila el bloque azul para restaurar la consciencia de C-R01.',
+                triggered: false
+            }
+        ];
     }
 
     build() {
@@ -451,6 +479,26 @@ export class Level1 {
             frag.collected = false;
             frag.mesh.visible = true;
         }
+        // Reset triggers
+        for (const trigger of this.messageTriggers) {
+            trigger.triggered = false;
+        }
+    }
+
+    /**
+     * Verifica si el jugador activó algún trigger de mensaje
+     * @returns {object|null} El trigger activado o null
+     */
+    checkMessageTriggers(player) {
+        for (const trigger of this.messageTriggers) {
+            if (trigger.triggered) continue;
+            const dist = Math.abs(player.position.x - trigger.x);
+            if (dist < trigger.radius) {
+                trigger.triggered = true;
+                return trigger;
+            }
+        }
+        return null;
     }
 
     update(delta) {

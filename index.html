@@ -38,6 +38,41 @@
             pointer-events: none;
         }
 
+        /* In-game message boxes (tutorial triggers) */
+        #game-message {
+            display: none;
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(5, 10, 20, 0.94);
+            border: 1px solid #00e5ff88;
+            box-shadow: 0 0 12px #00e5ff33, inset 0 0 6px #00e5ff11;
+            padding: 14px 22px;
+            border-radius: 4px;
+            color: #00e5ff;
+            font-size: 11px;
+            max-width: 480px;
+            line-height: 1.6;
+            text-align: left;
+            z-index: 40;
+        }
+        #game-message .msg-header {
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: #00e5ff66;
+            margin-bottom: 6px;
+        }
+        #game-message .msg-body {
+            color: #00e5ffdd;
+        }
+        #game-message.warning .msg-header { color: #ff404088; }
+        #game-message.warning { border-color: #ff404066; box-shadow: 0 0 12px #ff404022; }
+        #game-message.warning .msg-body { color: #ff6060cc; }
+        #game-message.info .msg-header { color: #40a0ff88; }
+        #game-message.info { border-color: #40a0ff66; box-shadow: 0 0 12px #40a0ff22; }
+        #game-message.info .msg-body { color: #60c0ffcc; }
+
         /* Controls Tutorial Panel */
         #controls-panel {
             display: none;
@@ -333,6 +368,10 @@
     <canvas id="game-canvas"></canvas>
     <div id="transition-overlay"></div>
     <div id="ui-overlay">
+        <div id="game-message">
+            <div class="msg-header"></div>
+            <div class="msg-body"></div>
+        </div>
         <div id="controls-panel">
             <h2>// CONTROLES</h2>
             <div class="control-row">
