@@ -1,28 +1,29 @@
 /**
  * Player - Perro Robot C-R01 en gameplay
+ * Diseño: Cabeza grande con visor oscuro, orejas caídas azul-teal,
+ * cuerpo blanco articulado, collar rojo, cola con propulsor
  * Animaciones: IDLE, WALK, JUMP, PROGRAMMED
- * Sistema de dualidad: Rojo (Lógica, ojos cuadrados) / Azul (Emoción, ojos redondos)
+ * Dualidad: Rojo (ojos cuadrados serios) / Azul (ojos cuadrados suaves con brillo)
  */
 import * as THREE from 'three';
 
-// Animaciones disponibles
 const ANIM = { IDLE: 'IDLE', WALK: 'WALK', JUMP: 'JUMP', PROGRAMMED: 'PROGRAMMED' };
 
 export class Player {
     constructor(scene, x, y) {
         this.scene = scene;
-        this.state = 'RED'; // RED = Lógica, BLUE = Emoción
+        this.state = 'RED';
         this.animation = ANIM.IDLE;
         this.position = { x, y };
         this.targetPosition = { x, y };
         this.isMoving = false;
         this.moveSpeed = 180;
-        this.size = 40;
+        this.size = 48;
         this.time = 0;
         this.animFrame = 0;
         this.blinkTimer = 0;
         this.isBlinking = false;
-        this.tailAngle = 0;
+        this.tailFlame = 0;
 
         this.createMesh();
         this.updatePosition();
@@ -31,7 +32,6 @@ export class Player {
     createMesh() {
         this.group = new THREE.Group();
 
-        // Canvas principal del sprite
         this.spriteCanvas = document.createElement('canvas');
         this.spriteCanvas.width = 48;
         this.spriteCanvas.height = 48;
@@ -50,15 +50,15 @@ export class Player {
         this.spriteMesh = new THREE.Mesh(geo, mat);
         this.group.add(this.spriteMesh);
 
-        // Glow del collar (cambia de color)
-        const glowGeo = new THREE.PlaneGeometry(20, 6);
+        // Glow del collar
+        const glowGeo = new THREE.PlaneGeometry(18, 5);
         this.collarGlowMat = new THREE.MeshBasicMaterial({
             color: 0xff3030,
             transparent: true,
-            opacity: 0.25
+            opacity: 0.2
         });
         this.collarGlow = new THREE.Mesh(glowGeo, this.collarGlowMat);
-        this.collarGlow.position.set(0, -4, -0.1);
+        this.collarGlow.position.set(0, -2, -0.1);
         this.group.add(this.collarGlow);
 
         this.scene.add(this.group);
@@ -67,124 +67,185 @@ export class Player {
 
     drawSprite() {
         const ctx = this.spriteCtx;
-        const w = 48, h = 48;
-        ctx.clearRect(0, 0, w, h);
+        ctx.clearRect(0, 0, 48, 48);
 
-        const bodyColor = '#e8e8f0';
-        const darkBody = '#c8c8d4';
-        const earColor = '#4488cc';
-        const stateColor = this.state === 'RED' ? '#ff3030' : '#00e5ff';
+        // Paleta
+        const white = '#f0f4f8';
+        const lightBlue = '#a8d8ea';
+        const midBlue = '#4a8faa';
+        const darkBlue = '#2c5f7a';
+        const visorBlack = '#1a2030';
+        const eyeColor = this.state === 'RED' ? '#ff3030' : '#00e8c0';
+        const collarColor = '#8b2020';
+        const collarGlow = this.state === 'RED' ? '#ff3030' : '#00e5ff';
+        const jointColor = '#c8dce8';
+        const shadow = '#88a0b0';
+        const darkShadow = '#5a7080';
+
         const isWalking = this.animation === ANIM.WALK;
         const isJumping = this.animation === ANIM.JUMP;
         const isProgrammed = this.animation === ANIM.PROGRAMMED;
 
-        // Offset de animación de caminar
-        const walkBob = isWalking ? Math.sin(this.animFrame * 8) * 1.5 : 0;
-        const legOffset = isWalking ? Math.sin(this.animFrame * 8) * 3 : 0;
-        const jumpSquash = isJumping ? -2 : 0;
+        // Offsets de animación
+        const walkBob = isWalking ? Math.sin(this.animFrame * 10) * 1 : 0;
+        const legAnim = isWalking ? Math.sin(this.animFrame * 10) * 2 : 0;
+        const earBounce = isWalking ? Math.sin(this.animFrame * 10 + 1) * 1 : 0;
+        const jumpSquash = isJumping ? -1 : 0;
 
-        const baseY = 8 + jumpSquash;
+        const bY = 2 + jumpSquash; // base Y offset
 
-        // --- Cola (detrás del cuerpo) ---
-        ctx.fillStyle = bodyColor;
-        const tailWag = Math.sin(this.tailAngle) * 4;
-        ctx.fillRect(4 + tailWag, baseY + 10, 4, 3);
-        ctx.fillRect(2 + tailWag, baseY + 8, 3, 3);
-        ctx.fillStyle = stateColor;
-        ctx.fillRect(1 + tailWag, baseY + 7, 2, 2);
+        // --- COLA con propulsor (detrás) ---
+        ctx.fillStyle = white;
+        ctx.fillRect(2, bY + 26, 4, 2);
+        ctx.fillRect(0, bY + 24, 3, 3);
+        // Propulsor
+        ctx.fillStyle = '#ff8800';
+        ctx.fillRect(0, bY + 22, 3, 3);
+        // Llama animada
+        this.tailFlame += 0.3;
+        const flameSize = 1 + Math.sin(this.tailFlame * 5) * 1;
+        ctx.fillStyle = '#ffcc00';
+        ctx.fillRect(0, bY + 20, 2, Math.max(1, Math.round(flameSize)));
 
-        // --- Patas traseras ---
-        ctx.fillStyle = darkBody;
-        ctx.fillRect(8, baseY + 28 - legOffset, 5, 8);
-        ctx.fillRect(28, baseY + 28 + legOffset, 5, 8);
+        // --- PATAS TRASERAS ---
+        ctx.fillStyle = shadow;
+        ctx.fillRect(10, bY + 34 - legAnim, 4, 6);
+        ctx.fillRect(14, bY + 34 + legAnim * 0.5, 3, 5);
+        // Juntas
+        ctx.fillStyle = midBlue;
+        ctx.fillRect(10, bY + 36 - legAnim, 4, 2);
         // Pies traseros
-        ctx.fillStyle = '#aaa';
-        ctx.fillRect(7, baseY + 35 - legOffset, 6, 3);
-        ctx.fillRect(27, baseY + 35 + legOffset, 6, 3);
+        ctx.fillStyle = white;
+        ctx.fillRect(9, bY + 40 - legAnim, 5, 3);
+        ctx.fillRect(13, bY + 39 + legAnim * 0.5, 4, 3);
 
-        // --- Cuerpo principal ---
-        ctx.fillStyle = bodyColor;
-        ctx.fillRect(10, baseY + 16 + walkBob, 22, 14);
-        // Sombra inferior
-        ctx.fillStyle = darkBody;
-        ctx.fillRect(10, baseY + 27 + walkBob, 22, 3);
+        // --- CUERPO ---
+        ctx.fillStyle = white;
+        ctx.fillRect(10, bY + 26, 22, 9);
+        // Franja azul claro
+        ctx.fillStyle = lightBlue;
+        ctx.fillRect(10, bY + 31, 22, 4);
+        // Panel central del pecho
+        ctx.fillStyle = shadow;
+        ctx.fillRect(18, bY + 27, 8, 4);
+        ctx.fillStyle = collarGlow;
+        ctx.fillRect(20, bY + 28, 4, 2);
 
-        // --- Patas delanteras ---
-        ctx.fillStyle = bodyColor;
-        ctx.fillRect(12, baseY + 30 + legOffset, 5, 8);
-        ctx.fillRect(25, baseY + 30 - legOffset, 5, 8);
-        // Pies delanteros
-        ctx.fillStyle = '#ddd';
-        ctx.fillRect(11, baseY + 37 + legOffset, 6, 3);
-        ctx.fillRect(24, baseY + 37 - legOffset, 6, 3);
+        // --- PATAS DELANTERAS ---
+        // Pata izquierda
+        ctx.fillStyle = white;
+        ctx.fillRect(26, bY + 35 + legAnim, 4, 6);
+        ctx.fillStyle = midBlue;
+        ctx.fillRect(26, bY + 37 + legAnim, 4, 2);
+        ctx.fillStyle = white;
+        ctx.fillRect(25, bY + 41 + legAnim, 6, 3);
+        ctx.fillStyle = shadow;
+        ctx.fillRect(25, bY + 43 + legAnim, 6, 1);
 
-        // --- Collar ---
-        ctx.fillStyle = '#222';
-        ctx.fillRect(11, baseY + 16 + walkBob, 20, 3);
-        ctx.fillStyle = stateColor;
-        ctx.fillRect(18, baseY + 16 + walkBob, 6, 3);
+        // Pata derecha
+        ctx.fillStyle = white;
+        ctx.fillRect(30, bY + 35 - legAnim, 4, 6);
+        ctx.fillStyle = midBlue;
+        ctx.fillRect(30, bY + 37 - legAnim, 4, 2);
+        ctx.fillStyle = white;
+        ctx.fillRect(29, bY + 41 - legAnim, 6, 3);
+        ctx.fillStyle = shadow;
+        ctx.fillRect(29, bY + 43 - legAnim, 6, 1);
 
-        // --- Cabeza ---
-        ctx.fillStyle = bodyColor;
-        ctx.fillRect(13, baseY + 2 + walkBob, 20, 15);
+        // --- COLLAR ---
+        ctx.fillStyle = collarColor;
+        ctx.fillRect(12, bY + 24, 20, 2);
+        ctx.fillStyle = collarGlow;
+        ctx.fillRect(20, bY + 24, 4, 2);
 
-        // Hocico
-        ctx.fillStyle = darkBody;
-        ctx.fillRect(27, baseY + 10 + walkBob, 8, 6);
-        // Nariz
-        ctx.fillStyle = '#222';
-        ctx.fillRect(33, baseY + 11 + walkBob, 3, 3);
+        // --- CABEZA (grande) ---
+        // Casco blanco superior
+        ctx.fillStyle = white;
+        ctx.fillRect(12, bY + 5 + walkBob, 24, 8);
+        ctx.fillRect(10, bY + 7 + walkBob, 28, 6);
+        ctx.fillRect(14, bY + 3 + walkBob, 20, 4);
+        // Borde oscuro del casco
+        ctx.fillStyle = darkBlue;
+        ctx.fillRect(14, bY + 3 + walkBob, 20, 2);
+        ctx.fillRect(12, bY + 5 + walkBob, 2, 2);
+        ctx.fillRect(34, bY + 5 + walkBob, 2, 2);
 
-        // --- Orejas azules ---
-        ctx.fillStyle = earColor;
-        const earBounce = isWalking ? Math.sin(this.animFrame * 8 + 1) * 1 : 0;
-        const earJump = isJumping ? 2 : 0;
-        ctx.fillRect(13, baseY - 2 + earBounce + earJump + walkBob, 5, 8);
-        ctx.fillRect(24, baseY - 2 + earBounce + earJump + walkBob, 5, 8);
+        // --- ANTENA ---
+        ctx.fillStyle = darkBlue;
+        ctx.fillRect(23, bY + 0 + walkBob, 2, 4);
+        ctx.fillStyle = collarGlow;
+        ctx.fillRect(22, bY + 0 + walkBob, 4, 2);
 
-        // --- Ojos/Visor ---
+        // --- VISOR OSCURO ---
+        ctx.fillStyle = visorBlack;
+        ctx.fillRect(10, bY + 11 + walkBob, 28, 7);
+        ctx.fillRect(12, bY + 10 + walkBob, 24, 1);
+
+        // --- OJOS ---
         if (isProgrammed) {
-            // Animación de carga de datos en el visor
-            ctx.fillStyle = stateColor;
-            const loadBar = (this.animFrame * 3) % 8;
-            ctx.fillRect(16, baseY + 6 + walkBob, loadBar, 3);
-            ctx.fillRect(24, baseY + 6 + walkBob, 8 - loadBar, 3);
+            // Barra de carga animada
+            ctx.fillStyle = collarGlow;
+            const loadW = ((this.animFrame * 4) % 8);
+            ctx.fillRect(15, bY + 13 + walkBob, loadW, 3);
+            ctx.fillRect(26, bY + 13 + walkBob, 8 - loadW, 3);
         } else if (!this.isBlinking) {
             if (this.state === 'RED') {
-                // Ojos CUADRADOS (serios - lógica)
-                ctx.fillStyle = stateColor;
-                ctx.fillRect(16, baseY + 5 + walkBob, 4, 4);
-                ctx.fillRect(23, baseY + 5 + walkBob, 4, 4);
-                // Pupila
-                ctx.fillStyle = '#800000';
-                ctx.fillRect(17, baseY + 6 + walkBob, 2, 2);
-                ctx.fillRect(24, baseY + 6 + walkBob, 2, 2);
-            } else {
-                // Ojos REDONDOS (tiernos - emoción)
-                ctx.fillStyle = stateColor;
-                ctx.beginPath();
-                ctx.arc(18, baseY + 7 + walkBob, 2.5, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(25, baseY + 7 + walkBob, 2.5, 0, Math.PI * 2);
-                ctx.fill();
+                // Ojos cuadrados serios
+                ctx.fillStyle = eyeColor;
+                ctx.fillRect(15, bY + 12 + walkBob, 4, 4);
+                ctx.fillRect(27, bY + 12 + walkBob, 4, 4);
                 // Brillo
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(17, baseY + 6 + walkBob, 1, 1);
-                ctx.fillRect(24, baseY + 6 + walkBob, 1, 1);
+                ctx.fillStyle = '#ffaaaa';
+                ctx.fillRect(15, bY + 12 + walkBob, 1, 1);
+                ctx.fillRect(27, bY + 12 + walkBob, 1, 1);
+            } else {
+                // Ojos con brillo (tiernos)
+                ctx.fillStyle = eyeColor;
+                ctx.fillRect(15, bY + 12 + walkBob, 4, 4);
+                ctx.fillRect(27, bY + 12 + walkBob, 4, 4);
+                // Brillo grande
+                ctx.fillStyle = '#aaffee';
+                ctx.fillRect(15, bY + 12 + walkBob, 2, 2);
+                ctx.fillRect(27, bY + 12 + walkBob, 2, 2);
             }
         } else {
-            // Parpadeo - línea horizontal
-            ctx.fillStyle = stateColor;
-            ctx.fillRect(16, baseY + 7 + walkBob, 4, 1);
-            ctx.fillRect(23, baseY + 7 + walkBob, 4, 1);
+            // Parpadeo - línea
+            ctx.fillStyle = eyeColor;
+            ctx.fillRect(15, bY + 14 + walkBob, 4, 1);
+            ctx.fillRect(27, bY + 14 + walkBob, 4, 1);
         }
 
-        // --- Antena ---
-        ctx.fillStyle = '#888';
-        ctx.fillRect(20, baseY - 3 + walkBob, 2, 5);
-        ctx.fillStyle = stateColor;
-        ctx.fillRect(19, baseY - 4 + walkBob, 4, 2);
+        // --- PARTE INFERIOR CABEZA (hocico) ---
+        ctx.fillStyle = white;
+        ctx.fillRect(12, bY + 18 + walkBob, 24, 5);
+        ctx.fillRect(14, bY + 23 + walkBob, 20, 2);
+        // Franja azul
+        ctx.fillStyle = lightBlue;
+        ctx.fillRect(12, bY + 20 + walkBob, 24, 3);
+        // Puntos del speaker
+        ctx.fillStyle = darkShadow;
+        ctx.fillRect(14, bY + 19 + walkBob, 1, 1);
+        ctx.fillRect(16, bY + 19 + walkBob, 1, 1);
+        ctx.fillRect(15, bY + 20 + walkBob, 1, 1);
+        ctx.fillRect(14, bY + 21 + walkBob, 1, 1);
+        ctx.fillRect(16, bY + 21 + walkBob, 1, 1);
+
+        // --- OREJAS CAÍDAS ---
+        // Oreja izquierda
+        ctx.fillStyle = darkBlue;
+        ctx.fillRect(6, bY + 9 + walkBob + earBounce, 5, 4);
+        ctx.fillRect(4, bY + 13 + walkBob + earBounce, 5, 8);
+        ctx.fillRect(5, bY + 21 + walkBob + earBounce, 4, 2);
+        ctx.fillStyle = midBlue;
+        ctx.fillRect(5, bY + 14 + walkBob + earBounce, 3, 5);
+
+        // Oreja derecha
+        ctx.fillStyle = darkBlue;
+        ctx.fillRect(37, bY + 9 + walkBob + earBounce, 5, 4);
+        ctx.fillRect(39, bY + 13 + walkBob + earBounce, 5, 8);
+        ctx.fillRect(39, bY + 21 + walkBob + earBounce, 4, 2);
+        ctx.fillStyle = midBlue;
+        ctx.fillRect(40, bY + 14 + walkBob + earBounce, 3, 5);
 
         // Actualizar textura
         this.texture.needsUpdate = true;
@@ -260,17 +321,16 @@ export class Player {
     update(delta) {
         this.time += delta;
         this.animFrame += delta;
-        this.tailAngle += delta * 6;
 
-        // Parpadeo periódico
+        // Parpadeo
         this.blinkTimer += delta;
-        if (!this.isBlinking && this.blinkTimer > 3 + Math.random() * 2) {
+        if (!this.isBlinking && this.blinkTimer > 2.5 + Math.random() * 2) {
             this.isBlinking = true;
             this.blinkTimer = 0;
-            setTimeout(() => { this.isBlinking = false; }, 150);
+            setTimeout(() => { this.isBlinking = false; }, 120);
         }
 
-        // Movimiento suave hacia target
+        // Movimiento
         if (this.isMoving) {
             const dx = this.targetPosition.x - this.position.x;
             const dy = this.targetPosition.y - this.position.y;
@@ -289,12 +349,12 @@ export class Player {
             this.updatePosition();
         }
 
-        // Glow pulsante del collar
+        // Glow pulsante
         if (this.collarGlowMat) {
             this.collarGlowMat.opacity = 0.15 + Math.sin(this.time * 4) * 0.1;
         }
 
-        // Redibujar sprite cada frame para animaciones
+        // Redibujar sprite
         this.drawSprite();
     }
 
