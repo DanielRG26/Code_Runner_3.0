@@ -35,6 +35,7 @@ export class GameplayState {
         // DOM refs
         this.controlsPanel = document.getElementById('controls-panel');
         this.hud = document.getElementById('hud');
+        this.hudButtons = document.getElementById('hud-buttons');
         this.hudFragments = document.getElementById('hud-fragments');
         this.hudTime = document.getElementById('hud-time');
         this.stateIndicator = document.getElementById('state-indicator');
@@ -46,6 +47,14 @@ export class GameplayState {
         this.gameOverUI = document.getElementById('game-over');
         this.btnGoRetry = document.getElementById('btn-go-retry');
         this.btnGoMenu = document.getElementById('btn-go-menu');
+        this.btnPause = document.getElementById('btn-pause');
+        this.btnBackMenu = document.getElementById('btn-back-menu');
+        this.pauseOverlay = document.getElementById('pause-overlay');
+        this.btnResume = document.getElementById('btn-resume');
+        this.btnPauseRetry = document.getElementById('btn-pause-retry');
+        this.btnPauseMenu = document.getElementById('btn-pause-menu');
+
+        this.isPaused = false;
 
         this.onKeyDown = this.onKeyDown.bind(this);
         this.onKeyUp = this.onKeyUp.bind(this);
@@ -53,6 +62,11 @@ export class GameplayState {
         this.onMenu = this.onMenu.bind(this);
         this.onGoRetry = this.onGoRetry.bind(this);
         this.onGoMenu = this.onGoMenu.bind(this);
+        this.onPause = this.onPause.bind(this);
+        this.onResume = this.onResume.bind(this);
+        this.onPauseRetry = this.onPauseRetry.bind(this);
+        this.onPauseMenu = this.onPauseMenu.bind(this);
+        this.onBackMenu = this.onBackMenu.bind(this);
     }
 
     enter() {
@@ -80,6 +94,7 @@ export class GameplayState {
 
         // HUD
         this.hud.style.display = 'block';
+        this.hudButtons.style.display = 'flex';
         this.stateIndicator.style.display = 'block';
         this.updateStateIndicator();
 
@@ -94,6 +109,11 @@ export class GameplayState {
         this.btnMenu.addEventListener('click', this.onMenu);
         this.btnGoRetry.addEventListener('click', this.onGoRetry);
         this.btnGoMenu.addEventListener('click', this.onGoMenu);
+        this.btnPause.addEventListener('click', this.onPause);
+        this.btnBackMenu.addEventListener('click', this.onBackMenu);
+        this.btnResume.addEventListener('click', this.onResume);
+        this.btnPauseRetry.addEventListener('click', this.onPauseRetry);
+        this.btnPauseMenu.addEventListener('click', this.onPauseMenu);
     }
 
     onKeyDown(e) {
@@ -107,7 +127,17 @@ export class GameplayState {
             return;
         }
 
-        if (this.levelComplete || this.gameOver) return;
+        // Pausar/despausar con Escape
+        if (key === 'escape') {
+            if (this.isPaused) {
+                this.onResume();
+            } else if (!this.gameOver && !this.levelComplete) {
+                this.onPause();
+            }
+            return;
+        }
+
+        if (this.levelComplete || this.gameOver || this.isPaused) return;
 
         // Cambiar estado con X
         if (key === 'x') {
@@ -142,7 +172,7 @@ export class GameplayState {
     }
 
     handlePhysics(delta) {
-        if (this.gameOver || this.levelComplete || this.showingTutorial) return;
+        if (this.gameOver || this.levelComplete || this.showingTutorial || this.isPaused) return;
 
         let dx = 0;
 
@@ -238,6 +268,37 @@ export class GameplayState {
         this.stateManager.changeState(STATES.MAIN_MENU);
     }
 
+    onPause() {
+        this.isPaused = true;
+        this.pauseOverlay.classList.add('visible');
+        this.keys = {};
+    }
+
+    onResume() {
+        this.isPaused = false;
+        this.pauseOverlay.classList.remove('visible');
+        this.audio.playClick();
+    }
+
+    onPauseRetry() {
+        this.audio.playClick();
+        this.pauseOverlay.classList.remove('visible');
+        this.isPaused = false;
+        this.resetLevel();
+    }
+
+    onPauseMenu() {
+        this.audio.playClick();
+        this.pauseOverlay.classList.remove('visible');
+        this.isPaused = false;
+        this.stateManager.changeState(STATES.MAIN_MENU);
+    }
+
+    onBackMenu() {
+        this.audio.playClick();
+        this.stateManager.changeState(STATES.MAIN_MENU);
+    }
+
     resetLevel() {
         this.gameOver = false;
         this.fragmentsCollected = 0;
@@ -287,7 +348,7 @@ export class GameplayState {
     update(delta) {
         this.time += delta;
 
-        if (!this.gameOver && !this.levelComplete && !this.showingTutorial) {
+        if (!this.gameOver && !this.levelComplete && !this.showingTutorial && !this.isPaused) {
             this.gameTime += delta;
             this.hudTime.textContent = `TIEMPO: ${Math.floor(this.gameTime)}s`;
         }
@@ -314,12 +375,19 @@ export class GameplayState {
         this.btnMenu.removeEventListener('click', this.onMenu);
         this.btnGoRetry.removeEventListener('click', this.onGoRetry);
         this.btnGoMenu.removeEventListener('click', this.onGoMenu);
+        this.btnPause.removeEventListener('click', this.onPause);
+        this.btnBackMenu.removeEventListener('click', this.onBackMenu);
+        this.btnResume.removeEventListener('click', this.onResume);
+        this.btnPauseRetry.removeEventListener('click', this.onPauseRetry);
+        this.btnPauseMenu.removeEventListener('click', this.onPauseMenu);
 
         this.controlsPanel.style.display = 'none';
         this.hud.style.display = 'none';
+        this.hudButtons.style.display = 'none';
         this.stateIndicator.style.display = 'none';
         this.levelCompleteUI.style.display = 'none';
         this.gameOverUI.classList.remove('visible');
+        this.pauseOverlay.classList.remove('visible');
         this.audio.stopMusic();
     }
 }
