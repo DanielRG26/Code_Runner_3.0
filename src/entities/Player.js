@@ -7,7 +7,7 @@
  */
 import * as THREE from 'three';
 
-const ANIM = { IDLE: 'IDLE', WALK: 'WALK', JUMP: 'JUMP', PROGRAMMED: 'PROGRAMMED' };
+const ANIM = { IDLE: 'IDLE', WALK: 'WALK', JUMP: 'JUMP', PROGRAMMED: 'PROGRAMMED', CROUCH: 'CROUCH' };
 
 export class Player {
     constructor(scene, x, y) {
@@ -86,14 +86,16 @@ export class Player {
         const isWalking = this.animation === ANIM.WALK;
         const isJumping = this.animation === ANIM.JUMP;
         const isProgrammed = this.animation === ANIM.PROGRAMMED;
+        const isCrouching = this.animation === ANIM.CROUCH;
 
         // Offsets de animación
         const walkBob = isWalking ? Math.sin(this.animFrame * 10) * 1 : 0;
         const legAnim = isWalking ? Math.sin(this.animFrame * 10) * 2 : 0;
         const earBounce = isWalking ? Math.sin(this.animFrame * 10 + 1) * 1 : 0;
         const jumpSquash = isJumping ? -1 : 0;
+        const crouchOffset = isCrouching ? 6 : 0; // Baja la cabeza
 
-        const bY = 2 + jumpSquash; // base Y offset
+        const bY = 2 + jumpSquash + crouchOffset; // base Y offset
 
         // --- COLA con propulsor (detrás) ---
         ctx.fillStyle = white;

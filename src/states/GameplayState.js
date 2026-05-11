@@ -185,6 +185,9 @@ export class GameplayState {
             dx = this.moveSpeed * delta;
             if (this.isGrounded) this.player.setAnimation('WALK');
             this.player.faceDirection(true);
+        } else if (this.keys['s'] || this.keys['arrowdown']) {
+            // Agacharse
+            this.player.setAnimation('CROUCH');
         } else if (this.isGrounded) {
             this.player.setAnimation('IDLE');
         }
