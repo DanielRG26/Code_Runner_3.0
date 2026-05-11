@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Runner: Fragmentos de Consciencia</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0f;
+            overflow: hidden;
+            font-family: monospace;
+            image-rendering: pixelated;
+        }
+        #game-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+        }
+        #ui-overlay > * { pointer-events: auto; }
+
+        /* Command Panel */
+        #command-panel {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(5, 10, 20, 0.92);
+            border: 2px solid #00e5ff;
+            box-shadow: 0 0 12px #00e5ff55, inset 0 0 8px #00e5ff22;
+            padding: 12px 18px;
+            border-radius: 4px;
+            color: #00e5ff;
+            font-size: 14px;
+            min-width: 520px;
+        }
+        #command-panel h3 { margin-bottom: 8px; font-size: 12px; letter-spacing: 2px; }
+        #command-input {
+            background: #0a0f1a;
+            border: 1px solid #00e5ff88;
+            color: #00e5ff;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 6px 10px;
+            width: 100%;
+            outline: none;
+        }
+        #command-input:focus { border-color: #00e5ff; box-shadow: 0 0 6px #00e5ff44; }
+        #command-help { margin-top: 6px; font-size: 10px; color: #00e5ff88; }
+        #command-queue { margin-top: 6px; font-size: 11px; color: #00e5ffcc; min-height: 18px; }
+
+        /* HUD */
+        #hud {
+            display: none;
+            position: absolute;
+            top: 12px; left: 12px;
+            color: #00e5ff;
+            font-size: 12px;
+            text-shadow: 0 0 4px #00e5ff88;
+        }
+        #hud .hud-item { margin-bottom: 4px; }
+
+        /* State Indicator */
+        #state-indicator {
+            position: absolute;
+            top: 12px; right: 12px;
+            display: none;
+            padding: 6px 14px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        #state-indicator.red {
+            background: rgba(255, 30, 30, 0.2);
+            border: 1px solid #ff3030;
+            color: #ff5050;
+            box-shadow: 0 0 8px #ff303055;
+        }
+        #state-indicator.blue {
+            background: rgba(30, 100, 255, 0.2);
+            border: 1px solid #3070ff;
+            color: #5090ff;
+            box-shadow: 0 0 8px #3070ff55;
+        }
+
+        /* Level Complete */
+        #level-complete {
+            display: none;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(5, 10, 20, 0.95);
+            border: 2px solid #00e5ff;
+            box-shadow: 0 0 20px #00e5ff55;
+            padding: 30px 50px;
+            text-align: center;
+            color: #00e5ff;
+        }
+        #level-complete h2 { font-size: 22px; margin-bottom: 12px; }
+        #level-complete .stars { font-size: 28px; margin: 10px 0; }
+        #level-complete button {
+            margin-top: 14px;
+            background: transparent;
+            border: 1px solid #00e5ff;
+            color: #00e5ff;
+            padding: 8px 20px;
+            font-family: monospace;
+            font-size: 13px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+        #level-complete button:hover { background: #00e5ff22; }
+    </style>
+</head>
+<body>
+    <canvas id="game-canvas"></canvas>
+    <div id="ui-overlay">
+        <div id="command-panel">
+            <h3>// CONSOLA DE COMANDOS</h3>
+            <div id="command-queue">Cola: [vacía]</div>
+            <input id="command-input" type="text"
+                   placeholder="arriba, abajo, izquierda, derecha, salto | Enter=ejecutar"
+                   autocomplete="off">
+            <div id="command-help">Comandos: arriba | abajo | izquierda | derecha | salto &nbsp;|&nbsp; X = cambiar estado &nbsp;|&nbsp; Enter = ejecutar secuencia</div>
+        </div>
+        <div id="hud">
+            <div class="hud-item" id="hud-fragments">FRAGMENTOS: 0/3</div>
+            <div class="hud-item" id="hud-time">TIEMPO: 0s</div>
+        </div>
+        <div id="state-indicator" class="red">ESTADO: LÓGICA</div>
+        <div id="level-complete">
+            <h2>SECTOR COMPLETADO</h2>
+            <div class="stars" id="stars-display">★ ★ ★</div>
+            <p id="complete-info"></p>
+            <button id="btn-retry">REINTENTAR</button>
+            <button id="btn-menu">MENÚ</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+        }
+    }
+    </script>
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
