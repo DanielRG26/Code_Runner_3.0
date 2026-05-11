@@ -319,10 +319,10 @@ export class GameplayState {
         this.levelComplete = true;
         this.audio.playLevelComplete();
 
-        const stars = this.calculateStars();
-        this.starsDisplay.textContent = '★ '.repeat(stars) + '☆ '.repeat(3 - stars);
-        this.completeInfo.textContent = `Tiempo: ${Math.floor(this.gameTime)}s | Fragmentos: ${this.fragmentsCollected}/${this.totalFragments}`;
-        this.levelCompleteUI.style.display = 'block';
+        // Redirigir al selector de niveles después de una breve pausa
+        setTimeout(() => {
+            this.stateManager.changeState(STATES.LEVEL_SELECT);
+        }, 1200);
     }
 
     calculateStars() {
