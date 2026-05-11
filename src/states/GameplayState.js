@@ -43,11 +43,16 @@ export class GameplayState {
         this.completeInfo = document.getElementById('complete-info');
         this.btnRetry = document.getElementById('btn-retry');
         this.btnMenu = document.getElementById('btn-menu');
+        this.gameOverUI = document.getElementById('game-over');
+        this.btnGoRetry = document.getElementById('btn-go-retry');
+        this.btnGoMenu = document.getElementById('btn-go-menu');
 
         this.onKeyDown = this.onKeyDown.bind(this);
         this.onKeyUp = this.onKeyUp.bind(this);
         this.onRetry = this.onRetry.bind(this);
         this.onMenu = this.onMenu.bind(this);
+        this.onGoRetry = this.onGoRetry.bind(this);
+        this.onGoMenu = this.onGoMenu.bind(this);
     }
 
     enter() {
@@ -87,6 +92,8 @@ export class GameplayState {
         window.addEventListener('keyup', this.onKeyUp);
         this.btnRetry.addEventListener('click', this.onRetry);
         this.btnMenu.addEventListener('click', this.onMenu);
+        this.btnGoRetry.addEventListener('click', this.onGoRetry);
+        this.btnGoMenu.addEventListener('click', this.onGoMenu);
     }
 
     onKeyDown(e) {
@@ -212,9 +219,22 @@ export class GameplayState {
         this.audio.playError();
         this.player.playDeathAnimation();
 
+        // Mostrar pantalla de Game Over después de la animación
         setTimeout(() => {
-            this.resetLevel();
-        }, 1200);
+            this.gameOverUI.classList.add('visible');
+        }, 800);
+    }
+
+    onGoRetry() {
+        this.audio.playClick();
+        this.gameOverUI.classList.remove('visible');
+        this.resetLevel();
+    }
+
+    onGoMenu() {
+        this.audio.playClick();
+        this.gameOverUI.classList.remove('visible');
+        this.stateManager.changeState(STATES.MAIN_MENU);
     }
 
     resetLevel() {
@@ -291,11 +311,14 @@ export class GameplayState {
         window.removeEventListener('keyup', this.onKeyUp);
         this.btnRetry.removeEventListener('click', this.onRetry);
         this.btnMenu.removeEventListener('click', this.onMenu);
+        this.btnGoRetry.removeEventListener('click', this.onGoRetry);
+        this.btnGoMenu.removeEventListener('click', this.onGoMenu);
 
         this.controlsPanel.style.display = 'none';
         this.hud.style.display = 'none';
         this.stateIndicator.style.display = 'none';
         this.levelCompleteUI.style.display = 'none';
+        this.gameOverUI.classList.remove('visible');
         this.audio.stopMusic();
     }
 }
