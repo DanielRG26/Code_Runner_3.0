@@ -1,35 +1,39 @@
 /**
- * GameplayState - Lógica principal del Nivel 1
- * Mecánica: Ingreso de comandos secuenciales + sistema de dualidad
- * Sonido integrado para pasos, colisiones, fragmentos
+ * GameplayState - Gameplay con controles en tiempo real (WASD)
+ * W = saltar, A = izquierda, D = derecha, S = agacharse, X = cambiar estado
+ * Nivel de introducción muestra panel de controles al inicio
  */
 import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
 import { Level1 } from '../levels/Level1.js';
 import { Player } from '../entities/Player.js';
-import { CommandSystem } from '../systems/CommandSystem.js';
 
 export class GameplayState {
     constructor(stateManager, renderer, audio, params) {
         this.stateManager = stateManager;
         this.renderer = renderer;
         this.audio = audio;
-        this.levelIndex = params.level || 1;
+        this.levelIndex = params.level || 0;
         this.time = 0;
         this.gameTime = 0;
         this.fragmentsCollected = 0;
         this.totalFragments = 3;
-        this.isExecuting = false;
         this.gameOver = false;
         this.levelComplete = false;
+        this.showingTutorial = true;
         this.player = null;
         this.level = null;
-        this.commandSystem = null;
+
+        // Input state
+        this.keys = {};
+        this.gravity = -600;
+        this.playerVelY = 0;
+        this.isGrounded = false;
+        this.moveSpeed = 160;
+        this.jumpForce = 320;
 
         // DOM refs
-        this.commandPanel = document.getElementById('command-panel');
-        this.commandInput = document.getElementById('command-input');
-        this.commandQueue = document.getElementById('command-queue');
+        this.controlsPanel = document.getElementById('controls-panel');
         this.hud = document.getElementById('hud');
         this.hudFragments = document.getElementById('hud-fragments');
         this.hudTime = document.getElementById('hud-time');
@@ -41,6 +45,7 @@ export class GameplayState {
         this.btnMenu = document.getElementById('btn-menu');
 
         this.onKeyDown = this.onKeyDown.bind(this);
+        this.onKeyUp = this.onKeyUp.bind(this);
         this.onRetry = this.onRetry.bind(this);
         this.onMenu = this.onMenu.bind(this);
     }
@@ -49,7 +54,7 @@ export class GameplayState {
         const scene = this.renderer.scene;
         scene.background = new THREE.Color(0x040406);
 
-        // Música ambiental
+        // Música
         this.audio.startMusic();
 
         // Crear nivel
@@ -59,75 +64,63 @@ export class GameplayState {
         // Crear jugador
         this.player = new Player(scene, this.level.spawnPoint.x, this.level.spawnPoint.y);
 
-        // Sistema de comandos
-        this.commandSystem = new CommandSystem(this.player, this.level, this.audio);
+        // Mostrar tutorial si es nivel de introducción
+        if (this.levelIndex === 0) {
+            this.showingTutorial = true;
+            this.controlsPanel.style.display = 'block';
+        } else {
+            this.showingTutorial = false;
+            this.controlsPanel.style.display = 'none';
+        }
 
-        // Mostrar UI
-        this.commandPanel.style.display = 'block';
+        // HUD
         this.hud.style.display = 'block';
         this.stateIndicator.style.display = 'block';
         this.updateStateIndicator();
 
-        // Centrar cámara
+        // Cámara
         this.renderer.camera.position.x = this.level.cameraCenter.x;
         this.renderer.camera.position.y = this.level.cameraCenter.y;
 
         // Eventos
         window.addEventListener('keydown', this.onKeyDown);
+        window.addEventListener('keyup', this.onKeyUp);
         this.btnRetry.addEventListener('click', this.onRetry);
         this.btnMenu.addEventListener('click', this.onMenu);
-
-        // Focus input
-        this.commandInput.value = '';
-        this.commandInput.focus();
     }
 
     onKeyDown(e) {
+        const key = e.key.toLowerCase();
+        this.keys[key] = true;
+
+        // Cerrar tutorial con cualquier tecla
+        if (this.showingTutorial) {
+            this.showingTutorial = false;
+            this.controlsPanel.style.display = 'none';
+            return;
+        }
+
         if (this.levelComplete || this.gameOver) return;
 
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            this.executeCommands();
-        } else if ((e.key === 'x' || e.key === 'X') && document.activeElement !== this.commandInput) {
+        // Cambiar estado con X
+        if (key === 'x') {
             this.player.toggleState();
             this.audio.playStateChange();
             this.updateStateIndicator();
         }
+
+        // Salto con W (solo si está en el suelo)
+        if ((key === 'w' || key === ' ') && this.isGrounded) {
+            this.playerVelY = this.jumpForce;
+            this.isGrounded = false;
+            this.player.setAnimation('JUMP');
+            this.audio.playStep();
+        }
     }
 
-    executeCommands() {
-        const input = this.commandInput.value.trim().toLowerCase();
-        if (!input || this.isExecuting) return;
-
-        const commands = input.split(/[\s,;]+/).map(cmd => {
-            switch (cmd) {
-                case 'arriba': case 'up': case 'w': return 'UP';
-                case 'abajo': case 'down': case 's': return 'DOWN';
-                case 'izquierda': case 'left': case 'a': return 'LEFT';
-                case 'derecha': case 'right': case 'd': return 'RIGHT';
-                case 'salto': case 'jump': case 'espacio': return 'JUMP';
-                case 'x': case 'cambiar': return 'TOGGLE';
-                default: return null;
-            }
-        }).filter(Boolean);
-
-        if (commands.length === 0) return;
-
-        this.commandQueue.textContent = `Ejecutando: [${commands.join(', ')}]`;
-        this.commandInput.value = '';
-        this.isExecuting = true;
-
-        // Animación PROGRAMMED mientras se ejecuta
-        this.player.setAnimation('PROGRAMMED');
-
-        this.commandSystem.execute(commands, () => {
-            this.isExecuting = false;
-            this.commandQueue.textContent = 'Cola: [vacía] - Listo para nuevos comandos';
-            this.commandInput.focus();
-            this.checkGameState();
-        }, () => {
-            return this.checkStepCollisions();
-        });
+    onKeyUp(e) {
+        const key = e.key.toLowerCase();
+        this.keys[key] = false;
     }
 
     updateStateIndicator() {
@@ -141,14 +134,60 @@ export class GameplayState {
         this.stateIndicator.style.display = 'block';
     }
 
-    checkGameState() {
+    handlePhysics(delta) {
+        if (this.gameOver || this.levelComplete || this.showingTutorial) return;
+
+        let dx = 0;
+
+        // Movimiento horizontal
+        if (this.keys['a'] || this.keys['arrowleft']) {
+            dx = -this.moveSpeed * delta;
+            this.player.setAnimation('WALK');
+        } else if (this.keys['d'] || this.keys['arrowright']) {
+            dx = this.moveSpeed * delta;
+            this.player.setAnimation('WALK');
+        } else if (this.isGrounded) {
+            this.player.setAnimation('IDLE');
+        }
+
+        // Aplicar movimiento horizontal
+        const newX = this.player.position.x + dx;
+        if (this.level.canMoveTo(newX, this.player.position.y, this.player.size)) {
+            this.player.position.x = newX;
+        }
+
+        // Gravedad
+        this.playerVelY += this.gravity * delta;
+        const newY = this.player.position.y + this.playerVelY * delta;
+
+        // Colisión con suelo
+        const groundY = this.level.getGroundAt(this.player.position.x, this.player.position.y);
+        const playerBottom = groundY + this.player.size / 2;
+
+        if (newY <= playerBottom && this.playerVelY <= 0) {
+            this.player.position.y = playerBottom;
+            this.playerVelY = 0;
+            this.isGrounded = true;
+        } else {
+            this.player.position.y = newY;
+            this.isGrounded = false;
+        }
+
+        this.player.updatePosition();
+    }
+
+    checkCollisions() {
+        if (this.gameOver || this.levelComplete) return;
+
+        // Recoger fragmentos (solo en estado AZUL)
         const collected = this.level.checkFragmentCollection(this.player);
         if (collected > 0) {
             this.fragmentsCollected += collected;
             this.audio.playCollectFragment();
+            this.hudFragments.textContent = `FRAGMENTOS: ${this.fragmentsCollected}/${this.totalFragments}`;
         }
-        this.hudFragments.textContent = `FRAGMENTOS: ${this.fragmentsCollected}/${this.totalFragments}`;
 
+        // Colisión con láseres
         if (this.level.checkLaserCollision(this.player)) {
             if (this.player.state !== 'RED') {
                 this.handleDeath();
@@ -156,48 +195,20 @@ export class GameplayState {
             }
         }
 
-        if (this.level.checkGoalReached(this.player)) {
-            if (this.fragmentsCollected >= this.totalFragments) {
-                this.handleLevelComplete();
-            }
-        }
-
+        // Caída al vacío
         if (this.player.position.y < this.level.deathY) {
             this.handleDeath();
-        }
-    }
-
-    checkStepCollisions() {
-        const collected = this.level.checkFragmentCollection(this.player);
-        if (collected > 0) {
-            this.fragmentsCollected += collected;
-            this.audio.playCollectFragment();
-        }
-        this.hudFragments.textContent = `FRAGMENTOS: ${this.fragmentsCollected}/${this.totalFragments}`;
-
-        if (this.level.checkLaserCollision(this.player)) {
-            if (this.player.state !== 'RED') {
-                this.handleDeath();
-                return true;
-            }
+            return;
         }
 
-        if (this.player.position.y < this.level.deathY) {
-            this.handleDeath();
-            return true;
-        }
-
+        // Meta
         if (this.level.checkGoalReached(this.player) && this.fragmentsCollected >= this.totalFragments) {
             this.handleLevelComplete();
-            return true;
         }
-
-        return false;
     }
 
     handleDeath() {
         this.gameOver = true;
-        this.commandPanel.style.display = 'none';
         this.audio.playError();
         this.player.playDeathAnimation();
 
@@ -208,25 +219,22 @@ export class GameplayState {
 
     resetLevel() {
         this.gameOver = false;
-        this.isExecuting = false;
         this.fragmentsCollected = 0;
         this.gameTime = 0;
+        this.playerVelY = 0;
+        this.isGrounded = false;
+        this.keys = {};
 
         this.player.reset(this.level.spawnPoint.x, this.level.spawnPoint.y);
         this.level.reset();
 
         this.hudFragments.textContent = `FRAGMENTOS: 0/${this.totalFragments}`;
         this.hudTime.textContent = 'TIEMPO: 0s';
-        this.commandPanel.style.display = 'block';
-        this.commandInput.value = '';
-        this.commandInput.focus();
-        this.commandQueue.textContent = 'Cola: [vacía] - C-R01 reiniciado';
         this.updateStateIndicator();
     }
 
     handleLevelComplete() {
         this.levelComplete = true;
-        this.commandPanel.style.display = 'none';
         this.audio.playLevelComplete();
 
         const stars = this.calculateStars();
@@ -257,14 +265,19 @@ export class GameplayState {
 
     update(delta) {
         this.time += delta;
-        if (!this.gameOver && !this.levelComplete) {
+
+        if (!this.gameOver && !this.levelComplete && !this.showingTutorial) {
             this.gameTime += delta;
             this.hudTime.textContent = `TIEMPO: ${Math.floor(this.gameTime)}s`;
         }
 
-        if (this.commandSystem) {
-            this.commandSystem.update(delta);
-        }
+        // Física y movimiento en tiempo real
+        this.handlePhysics(delta);
+
+        // Colisiones
+        this.checkCollisions();
+
+        // Actualizar entidades
         if (this.player) {
             this.player.update(delta);
         }
@@ -275,10 +288,11 @@ export class GameplayState {
 
     exit() {
         window.removeEventListener('keydown', this.onKeyDown);
+        window.removeEventListener('keyup', this.onKeyUp);
         this.btnRetry.removeEventListener('click', this.onRetry);
         this.btnMenu.removeEventListener('click', this.onMenu);
 
-        this.commandPanel.style.display = 'none';
+        this.controlsPanel.style.display = 'none';
         this.hud.style.display = 'none';
         this.stateIndicator.style.display = 'none';
         this.levelCompleteUI.style.display = 'none';
