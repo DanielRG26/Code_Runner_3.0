@@ -24,6 +24,7 @@ export class Player {
         this.blinkTimer = 0;
         this.isBlinking = false;
         this.tailFlame = 0;
+        this.facingRight = true;
 
         this.createMesh();
         this.updatePosition();
@@ -269,6 +270,13 @@ export class Player {
         if (this.animation !== anim) {
             this.animation = anim;
             this.animFrame = 0;
+        }
+    }
+
+    faceDirection(right) {
+        if (this.facingRight !== right) {
+            this.facingRight = right;
+            this.spriteMesh.scale.x = right ? 1 : -1;
         }
     }
 

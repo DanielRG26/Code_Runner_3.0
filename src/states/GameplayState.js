@@ -150,9 +150,11 @@ export class GameplayState {
         if (this.keys['a'] || this.keys['arrowleft']) {
             dx = -this.moveSpeed * delta;
             if (this.isGrounded) this.player.setAnimation('WALK');
+            this.player.faceDirection(false);
         } else if (this.keys['d'] || this.keys['arrowright']) {
             dx = this.moveSpeed * delta;
             if (this.isGrounded) this.player.setAnimation('WALK');
+            this.player.faceDirection(true);
         } else if (this.isGrounded) {
             this.player.setAnimation('IDLE');
         }
