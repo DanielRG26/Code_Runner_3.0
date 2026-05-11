@@ -17,7 +17,7 @@ export class Level1 {
         // Configuración
         this.spawnPoint = { x: -380, y: -100 };
         this.cameraCenter = { x: 50, y: -20 };
-        this.deathY = -350;
+        this.deathY = -220;
 
         // Plataformas [x, y, width, height]
         this.platformData = [
@@ -406,14 +406,13 @@ export class Level1 {
         let collected = 0;
         for (const frag of this.fragments) {
             if (frag.collected) continue;
-            if (player.state !== 'BLUE') continue;
 
             const dist = Math.sqrt(
                 Math.pow(player.position.x - frag.x, 2) +
                 Math.pow(player.position.y - frag.y, 2)
             );
 
-            if (dist < 28) {
+            if (dist < 30) {
                 frag.collected = true;
                 frag.mesh.visible = false;
                 collected++;
@@ -426,10 +425,10 @@ export class Level1 {
         const bounds = player.getBounds();
         for (const laser of this.lasers) {
             if (!laser.active) continue;
-            const laserLeft = laser.x - laser.width / 2 - 5;
-            const laserRight = laser.x + laser.width / 2 + 5;
-            const laserTop = laser.y + laser.height / 2;
-            const laserBottom = laser.y - laser.height / 2;
+            const laserLeft = laser.x - laser.width / 2 - 8;
+            const laserRight = laser.x + laser.width / 2 + 8;
+            const laserTop = laser.y + laser.height / 2 + 5;
+            const laserBottom = laser.y - laser.height / 2 - 5;
 
             if (bounds.right > laserLeft && bounds.left < laserRight &&
                 bounds.top > laserBottom && bounds.bottom < laserTop) {

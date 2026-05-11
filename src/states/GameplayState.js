@@ -149,10 +149,10 @@ export class GameplayState {
         // Movimiento horizontal
         if (this.keys['a'] || this.keys['arrowleft']) {
             dx = -this.moveSpeed * delta;
-            this.player.setAnimation('WALK');
+            if (this.isGrounded) this.player.setAnimation('WALK');
         } else if (this.keys['d'] || this.keys['arrowright']) {
             dx = this.moveSpeed * delta;
-            this.player.setAnimation('WALK');
+            if (this.isGrounded) this.player.setAnimation('WALK');
         } else if (this.isGrounded) {
             this.player.setAnimation('IDLE');
         }
@@ -167,17 +167,18 @@ export class GameplayState {
         this.playerVelY += this.gravity * delta;
         const newY = this.player.position.y + this.playerVelY * delta;
 
-        // Colisión con suelo
+        // Buscar suelo debajo del jugador
         const groundY = this.level.getGroundAt(this.player.position.x, this.player.position.y);
-        const playerBottom = groundY + this.player.size / 2;
+        const playerFeetY = groundY + this.player.size / 2;
 
-        if (newY <= playerBottom && this.playerVelY <= 0) {
-            this.player.position.y = playerBottom;
+        // Solo aterrizar si hay una plataforma real (no el deathY)
+        if (groundY > this.level.deathY && newY <= playerFeetY && this.playerVelY <= 0) {
+            this.player.position.y = playerFeetY;
             this.playerVelY = 0;
             this.isGrounded = true;
         } else {
             this.player.position.y = newY;
-            this.isGrounded = false;
+            this.isGrounded = (groundY > this.level.deathY && Math.abs(this.player.position.y - playerFeetY) < 2);
         }
 
         this.player.updatePosition();
@@ -186,7 +187,7 @@ export class GameplayState {
     checkCollisions() {
         if (this.gameOver || this.levelComplete) return;
 
-        // Recoger fragmentos (solo en estado AZUL)
+        // Recoger fragmentos
         const collected = this.level.checkFragmentCollection(this.player);
         if (collected > 0) {
             this.fragmentsCollected += collected;
@@ -194,12 +195,10 @@ export class GameplayState {
             this.hudFragments.textContent = `FRAGMENTOS: ${this.fragmentsCollected}/${this.totalFragments}`;
         }
 
-        // Colisión con láseres
+        // Colisión con láseres (muere siempre al tocar un láser)
         if (this.level.checkLaserCollision(this.player)) {
-            if (this.player.state !== 'RED') {
-                this.handleDeath();
-                return;
-            }
+            this.handleDeath();
+            return;
         }
 
         // Caída al vacío
@@ -208,8 +207,8 @@ export class GameplayState {
             return;
         }
 
-        // Meta
-        if (this.level.checkGoalReached(this.player) && this.fragmentsCollected >= this.totalFragments) {
+        // Meta (llegar al final)
+        if (this.level.checkGoalReached(this.player)) {
             this.handleLevelComplete();
         }
     }
