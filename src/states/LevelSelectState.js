@@ -82,7 +82,7 @@ export class LevelSelectState {
                 });
                 const diamond = new THREE.Mesh(diamondGeo, diamondMat);
                 diamond.rotation.z = Math.PI / 4;
-                diamond.position.set(195 + f * 20, y, 1);
+                diamond.position.set(230 + f * 22, y, 1);
                 scene.add(diamond);
 
                 // Glow si está recogido
@@ -93,7 +93,7 @@ export class LevelSelectState {
                     });
                     const glow = new THREE.Mesh(glowGeo, glowMat);
                     glow.rotation.z = Math.PI / 4;
-                    glow.position.set(195 + f * 20, y, 0.9);
+                    glow.position.set(230 + f * 22, y, 0.9);
                     scene.add(glow);
                 }
             }
@@ -101,11 +101,11 @@ export class LevelSelectState {
             // Icono de estado (completado/bloqueado)
             if (level.unlocked) {
                 if (ProgressManager.isCompleted(i)) {
-                    const checkIcon = PixelText.create('✓', 270, y, 12, 0x00ff88);
+                    const checkIcon = PixelText.create('✓', 310, y, 12, 0x00ff88);
                     scene.add(checkIcon);
                 }
             } else {
-                const lockIcon = PixelText.create('🔒', 270, y, 11, 0x444444);
+                const lockIcon = PixelText.create('🔒', 310, y, 11, 0x444444);
                 scene.add(lockIcon);
             }
         });
