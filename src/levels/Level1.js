@@ -53,24 +53,24 @@ export class Level1 {
                 x: -300, // Cerca del inicio
                 radius: 60,
                 type: '',
-                header: '> LOG DE SISTEMA',
-                body: 'Funciones motoras en línea. Detectando obstáculos en la trayectoria. Utiliza [W] para superar las plataformas.',
+                header: '> SISTEMA',
+                body: '¡Presiona W para saltar! Salta sobre las plataformas.',
                 triggered: false
             },
             {
                 x: -140, // Antes del primer hueco
                 radius: 50,
                 type: 'warning',
-                header: '> ADVERTENCIA_CRÍTICA',
-                body: 'Brecha en el sector espacial. Peligro de caída al vacío de datos. Calcula tu salto con precisión para no dañar el chasis.',
+                header: '> ¡CUIDADO!',
+                body: '¡Hay un hueco! Si te caes, tendrás que volver a empezar. ¡Salta con cuidado!',
                 triggered: false
             },
             {
                 x: -50, // Cerca del primer fragmento
                 radius: 55,
                 type: 'info',
-                header: '> ANOMALÍA DETECTADA',
-                body: 'Fragmento de memoria recuperable cerca. Asimila el bloque azul para restaurar la consciencia de C-R01.',
+                header: '> FRAGMENTO',
+                body: '¡Recoge los diamantes azules! Son los recuerdos perdidos de C-R01.',
                 triggered: false
             }
         ];

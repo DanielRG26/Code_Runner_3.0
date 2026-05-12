@@ -8,6 +8,7 @@ import { STATES } from './GameStateManager.js';
 import { Level1 } from '../levels/Level1.js';
 import { Level2 } from '../levels/Level2.js';
 import { Player } from '../entities/Player.js';
+import { ProgressManager } from '../core/ProgressManager.js';
 
 export class GameplayState {
     constructor(stateManager, renderer, audio, params) {
@@ -163,7 +164,7 @@ export class GameplayState {
             this.playerVelY = this.jumpForce;
             this.isGrounded = false;
             this.player.setAnimation('JUMP');
-            this.audio.playStep();
+            this.audio.playJump();
         }
     }
 
@@ -404,6 +405,9 @@ export class GameplayState {
     handleLevelComplete() {
         this.levelComplete = true;
         this.audio.playLevelComplete();
+
+        // Guardar progreso
+        ProgressManager.saveLevel(this.levelIndex, this.fragmentsCollected, true);
 
         // Redirigir al selector de niveles después de una breve pausa
         setTimeout(() => {

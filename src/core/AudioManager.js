@@ -165,6 +165,39 @@ export class AudioManager {
         osc.stop(ctx.currentTime + 0.06);
     }
 
+    playJump() {
+        if (!this.unlocked) return;
+        const ctx = this.ctx;
+        // Sonido de propulsor/salto - swoosh ascendente
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(200, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.15);
+        const osc2 = ctx.createOscillator();
+        osc2.type = 'sawtooth';
+        osc2.frequency.setValueAtTime(100, ctx.currentTime);
+        osc2.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.12);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+        const gain2 = ctx.createGain();
+        gain2.gain.setValueAtTime(0.06, ctx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 400;
+        filter.Q.value = 2;
+        osc.connect(gain);
+        osc2.connect(filter);
+        filter.connect(gain2);
+        gain.connect(this.sfxGain);
+        gain2.connect(this.sfxGain);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+        osc2.start();
+        osc2.stop(ctx.currentTime + 0.15);
+    }
+
     playCollectFragment() {
         if (!this.unlocked) return;
         const ctx = this.ctx;

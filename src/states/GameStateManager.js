@@ -25,7 +25,6 @@ export class GameStateManager {
 
     changeState(stateName, params = {}) {
         if (this.transitioning) return;
-        this.transitioning = true;
 
         const doChange = () => {
             if (this.currentState) {
@@ -51,8 +50,13 @@ export class GameStateManager {
             this.transitioning = false;
         };
 
-        // Usar transición glitch
-        Transition.play(doChange);
+        // Primera carga: sin transición. Después: con glitch
+        if (!this.currentState) {
+            doChange();
+        } else {
+            this.transitioning = true;
+            Transition.play(doChange);
+        }
     }
 
     update(delta) {
