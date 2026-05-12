@@ -6,6 +6,7 @@ import { STATES } from './GameStateManager.js';
 import { PixelText } from '../utils/PixelText.js';
 import { createNeonButton, redrawButton } from '../utils/UIFactory.js';
 import { createRobotSprite } from '../entities/RobotSprite.js';
+import { ProgressManager } from '../core/ProgressManager.js';
 
 export class LevelSelectState {
     constructor(stateManager, renderer, audio) {
@@ -68,11 +69,30 @@ export class LevelSelectState {
             scene.add(btn);
             this.buttons.push(btn);
 
-            // Icono a la derecha
-            const iconText = level.unlocked ? '▶' : '🔒';
-            const iconColor = level.unlocked ? 0x00e5ff : 0x444444;
-            const icon = PixelText.create(iconText, 230, y, 11, iconColor);
-            scene.add(icon);
+            // Mostrar fragmentos recogidos (diamantes) al lado del nivel
+            const fragments = ProgressManager.getFragments(i);
+            const totalFragments = 3;
+            let fragmentDisplay = '';
+            for (let f = 0; f < totalFragments; f++) {
+                fragmentDisplay += f < fragments ? '◆' : '◇';
+            }
+            const fragColor = fragments === totalFragments ? 0x00e5ff : (fragments > 0 ? 0x4488aa : 0x333344);
+            const fragText = PixelText.create(fragmentDisplay, 210, y, 12, fragColor);
+            scene.add(fragText);
+
+            // Icono de estado (completado/bloqueado)
+            if (level.unlocked) {
+                if (ProgressManager.isCompleted(i)) {
+                    const checkIcon = PixelText.create('✓', 260, y, 12, 0x00ff88);
+                    scene.add(checkIcon);
+                } else {
+                    const playIcon = PixelText.create('▶', 260, y, 11, 0x00e5ff);
+                    scene.add(playIcon);
+                }
+            } else {
+                const lockIcon = PixelText.create('🔒', 260, y, 11, 0x444444);
+                scene.add(lockIcon);
+            }
         });
 
         // Botón volver

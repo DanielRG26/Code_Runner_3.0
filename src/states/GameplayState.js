@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
 import { Level1 } from '../levels/Level1.js';
 import { Player } from '../entities/Player.js';
+import { ProgressManager } from '../core/ProgressManager.js';
 
 export class GameplayState {
     constructor(stateManager, renderer, audio, params) {
@@ -348,6 +349,9 @@ export class GameplayState {
     handleLevelComplete() {
         this.levelComplete = true;
         this.audio.playLevelComplete();
+
+        // Guardar progreso
+        ProgressManager.saveLevel(this.levelIndex, this.fragmentsCollected, true);
 
         // Redirigir al selector de niveles después de una breve pausa
         setTimeout(() => {
