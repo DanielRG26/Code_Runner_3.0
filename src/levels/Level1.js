@@ -17,7 +17,7 @@ export class Level1 {
         // Configuración
         this.spawnPoint = { x: -380, y: -100 };
         this.cameraCenter = { x: 50, y: -20 };
-        this.deathY = -350;
+        this.deathY = -220;
 
         // Plataformas [x, y, width, height]
         this.platformData = [
@@ -46,6 +46,34 @@ export class Level1 {
 
         // Meta
         this.goalData = { x: 450, y: -70 };
+
+        // Triggers de mensajes (zonas que activan texto)
+        this.messageTriggers = [
+            {
+                x: -300, // Cerca del inicio
+                radius: 60,
+                type: '',
+                header: '> SISTEMA',
+                body: '¡Presiona W para saltar! Salta sobre las plataformas.',
+                triggered: false
+            },
+            {
+                x: -140, // Antes del primer hueco
+                radius: 50,
+                type: 'warning',
+                header: '> ¡CUIDADO!',
+                body: '¡Hay un hueco! Si te caes, tendrás que volver a empezar. ¡Salta con cuidado!',
+                triggered: false
+            },
+            {
+                x: -50, // Cerca del primer fragmento
+                radius: 55,
+                type: 'info',
+                header: '> FRAGMENTO',
+                body: '¡Recoge los diamantes azules! Son los recuerdos perdidos de C-R01.',
+                triggered: false
+            }
+        ];
     }
 
     build() {
@@ -406,14 +434,13 @@ export class Level1 {
         let collected = 0;
         for (const frag of this.fragments) {
             if (frag.collected) continue;
-            if (player.state !== 'BLUE') continue;
 
             const dist = Math.sqrt(
                 Math.pow(player.position.x - frag.x, 2) +
                 Math.pow(player.position.y - frag.y, 2)
             );
 
-            if (dist < 28) {
+            if (dist < 30) {
                 frag.collected = true;
                 frag.mesh.visible = false;
                 collected++;
@@ -426,10 +453,10 @@ export class Level1 {
         const bounds = player.getBounds();
         for (const laser of this.lasers) {
             if (!laser.active) continue;
-            const laserLeft = laser.x - laser.width / 2 - 5;
-            const laserRight = laser.x + laser.width / 2 + 5;
-            const laserTop = laser.y + laser.height / 2;
-            const laserBottom = laser.y - laser.height / 2;
+            const laserLeft = laser.x - laser.width / 2 - 8;
+            const laserRight = laser.x + laser.width / 2 + 8;
+            const laserTop = laser.y + laser.height / 2 + 5;
+            const laserBottom = laser.y - laser.height / 2 - 5;
 
             if (bounds.right > laserLeft && bounds.left < laserRight &&
                 bounds.top > laserBottom && bounds.bottom < laserTop) {
@@ -452,6 +479,26 @@ export class Level1 {
             frag.collected = false;
             frag.mesh.visible = true;
         }
+        // Reset triggers
+        for (const trigger of this.messageTriggers) {
+            trigger.triggered = false;
+        }
+    }
+
+    /**
+     * Verifica si el jugador activó algún trigger de mensaje
+     * @returns {object|null} El trigger activado o null
+     */
+    checkMessageTriggers(player) {
+        for (const trigger of this.messageTriggers) {
+            if (trigger.triggered) continue;
+            const dist = Math.abs(player.position.x - trigger.x);
+            if (dist < trigger.radius) {
+                trigger.triggered = true;
+                return trigger;
+            }
+        }
+        return null;
     }
 
     update(delta) {

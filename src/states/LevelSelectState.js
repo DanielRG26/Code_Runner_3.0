@@ -4,8 +4,9 @@
 import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
 import { PixelText } from '../utils/PixelText.js';
-import { createNeonButton } from '../utils/UIFactory.js';
+import { createNeonButton, redrawButton } from '../utils/UIFactory.js';
 import { createRobotSprite } from '../entities/RobotSprite.js';
+import { ProgressManager } from '../core/ProgressManager.js';
 
 export class LevelSelectState {
     constructor(stateManager, renderer, audio) {
@@ -42,7 +43,7 @@ export class LevelSelectState {
         // Niveles
         const levels = [
             { name: '> INTRODUCCIÓN', icon: '▶', unlocked: true },
-            { name: '> NIVEL_1', icon: '◠', unlocked: true },
+            { name: '> NIVEL_1', icon: '◠', unlocked: false },
             { name: '> NIVEL_2', icon: '⚡', unlocked: false },
             { name: '> NIVEL_3', icon: '⚙', unlocked: false },
             { name: '> NIVEL_4', icon: '◎', unlocked: false },
@@ -68,11 +69,45 @@ export class LevelSelectState {
             scene.add(btn);
             this.buttons.push(btn);
 
-            // Icono a la derecha
-            const iconText = level.unlocked ? '▶' : '🔒';
-            const iconColor = level.unlocked ? 0x00e5ff : 0x444444;
-            const icon = PixelText.create(iconText, 230, y, 11, iconColor);
-            scene.add(icon);
+            // Mostrar fragmentos recogidos como diamantes visuales
+            const fragments = ProgressManager.getFragments(i);
+            const totalFragments = 3;
+            for (let f = 0; f < totalFragments; f++) {
+                const collected = f < fragments;
+                const diamondGeo = new THREE.PlaneGeometry(12, 12);
+                const diamondMat = new THREE.MeshBasicMaterial({
+                    color: collected ? 0x40a0ff : 0x222233,
+                    transparent: true,
+                    opacity: collected ? 0.9 : 0.3
+                });
+                const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+                diamond.rotation.z = Math.PI / 4;
+                diamond.position.set(230 + f * 22, y, 1);
+                scene.add(diamond);
+
+                // Glow si está recogido
+                if (collected) {
+                    const glowGeo = new THREE.PlaneGeometry(16, 16);
+                    const glowMat = new THREE.MeshBasicMaterial({
+                        color: 0x40a0ff, transparent: true, opacity: 0.25
+                    });
+                    const glow = new THREE.Mesh(glowGeo, glowMat);
+                    glow.rotation.z = Math.PI / 4;
+                    glow.position.set(230 + f * 22, y, 0.9);
+                    scene.add(glow);
+                }
+            }
+
+            // Icono de estado (completado/bloqueado)
+            if (level.unlocked) {
+                if (ProgressManager.isCompleted(i)) {
+                    const checkIcon = PixelText.create('✓', 310, y, 12, 0x00ff88);
+                    scene.add(checkIcon);
+                }
+            } else {
+                const lockIcon = PixelText.create('🔒', 310, y, 11, 0x444444);
+                scene.add(lockIcon);
+            }
         });
 
         // Botón volver
@@ -195,7 +230,8 @@ export class LevelSelectState {
         for (const btn of this.buttons) {
             const border = btn.children.find(c => c.userData.isBorder);
             if (border && btn.userData.unlocked !== false) {
-                border.material.opacity = (btn === this.hoveredBtn) ? 1.0 : 0.6;
+                const isHovered = btn === this.hoveredBtn;
+                redrawButton(border, isHovered ? 1.0 : 0.5);
             }
         }
     }

@@ -38,6 +38,49 @@
             pointer-events: none;
         }
 
+        /* In-game message boxes (tutorial triggers) */
+        #game-message {
+            display: none;
+            position: absolute;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(5, 12, 25, 0.95);
+            border: 2px solid #00e5ff;
+            box-shadow: 0 0 20px #00e5ff44, inset 0 0 10px #00e5ff11;
+            padding: 20px 30px;
+            border-radius: 6px;
+            color: #00e5ff;
+            font-size: 16px;
+            max-width: 520px;
+            min-width: 400px;
+            line-height: 1.7;
+            text-align: left;
+            z-index: 40;
+            animation: msgAppear 0.4s ease-out;
+        }
+        @keyframes msgAppear {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        #game-message .msg-header {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: #00e5ff88;
+            margin-bottom: 10px;
+        }
+        #game-message .msg-body {
+            color: #00e5ff;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        #game-message.warning { border-color: #ff5050; box-shadow: 0 0 20px #ff505033; }
+        #game-message.warning .msg-header { color: #ff505088; }
+        #game-message.warning .msg-body { color: #ff7070; }
+        #game-message.info { border-color: #50a0ff; box-shadow: 0 0 20px #50a0ff33; }
+        #game-message.info .msg-header { color: #50a0ff88; }
+        #game-message.info .msg-body { color: #70c0ff; }
+
         /* Controls Tutorial Panel */
         #controls-panel {
             display: none;
@@ -107,6 +150,85 @@
             text-shadow: 0 0 6px #00e5ff66;
         }
         #hud .hud-item { margin-bottom: 5px; }
+
+        /* HUD Buttons (pause, menu) */
+        #hud-buttons {
+            display: none;
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            gap: 10px;
+        }
+        #hud-buttons button {
+            background: rgba(5, 10, 20, 0.85);
+            border: 1px solid #00e5ff88;
+            color: #00e5ff;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 6px 14px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+        #hud-buttons button:hover {
+            background: #00e5ff15;
+            border-color: #00e5ff;
+            box-shadow: 0 0 8px #00e5ff33;
+        }
+        #hud-buttons .btn-icon { font-size: 14px; }
+
+        /* Pause Overlay */
+        #pause-overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(2, 2, 8, 0.88);
+            z-index: 80;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #pause-overlay.visible { display: flex; }
+        #pause-overlay h2 {
+            font-size: 24px;
+            color: #00e5ff;
+            letter-spacing: 4px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00e5ff66;
+        }
+        #pause-overlay p {
+            font-size: 11px;
+            color: #00e5ff88;
+            margin-bottom: 24px;
+        }
+        #pause-overlay .pause-buttons {
+            display: flex;
+            gap: 14px;
+        }
+        #pause-overlay .pause-buttons button {
+            background: rgba(5, 10, 20, 0.9);
+            border: 2px solid #00e5ff;
+            color: #00e5ff;
+            padding: 12px 28px;
+            font-family: monospace;
+            font-size: 13px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 0 8px #00e5ff22;
+        }
+        #pause-overlay .pause-buttons button:hover {
+            background: #00e5ff15;
+            box-shadow: 0 0 14px #00e5ff44;
+        }
 
         /* State Indicator */
         #state-indicator {
@@ -254,6 +376,10 @@
     <canvas id="game-canvas"></canvas>
     <div id="transition-overlay"></div>
     <div id="ui-overlay">
+        <div id="game-message">
+            <div class="msg-header"></div>
+            <div class="msg-body"></div>
+        </div>
         <div id="controls-panel">
             <h2>// CONTROLES</h2>
             <div class="control-row">
@@ -281,6 +407,19 @@
         <div id="hud">
             <div class="hud-item" id="hud-fragments">FRAGMENTOS: 0/3</div>
             <div class="hud-item" id="hud-time">TIEMPO: 0s</div>
+        </div>
+        <div id="hud-buttons">
+            <button id="btn-pause"><span class="btn-icon">⏸</span> PAUSA</button>
+            <button id="btn-back-menu"><span class="btn-icon">⌂</span> MENÚ</button>
+        </div>
+        <div id="pause-overlay">
+            <h2>// PAUSA</h2>
+            <p>El sistema está en espera...</p>
+            <div class="pause-buttons">
+                <button id="btn-resume"><span class="btn-icon">▶</span> CONTINUAR</button>
+                <button id="btn-pause-retry"><span class="btn-icon">↺</span> REINICIAR</button>
+                <button id="btn-pause-menu"><span class="btn-icon">⌂</span> MENÚ</button>
+            </div>
         </div>
         <div id="state-indicator" class="red">ESTADO: LÓGICA ■</div>
         <div id="level-complete">

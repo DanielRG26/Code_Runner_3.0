@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
 import { Level1 } from '../levels/Level1.js';
 import { Player } from '../entities/Player.js';
+import { ProgressManager } from '../core/ProgressManager.js';
 
 export class GameplayState {
     constructor(stateManager, renderer, audio, params) {
@@ -35,6 +36,7 @@ export class GameplayState {
         // DOM refs
         this.controlsPanel = document.getElementById('controls-panel');
         this.hud = document.getElementById('hud');
+        this.hudButtons = document.getElementById('hud-buttons');
         this.hudFragments = document.getElementById('hud-fragments');
         this.hudTime = document.getElementById('hud-time');
         this.stateIndicator = document.getElementById('state-indicator');
@@ -46,6 +48,19 @@ export class GameplayState {
         this.gameOverUI = document.getElementById('game-over');
         this.btnGoRetry = document.getElementById('btn-go-retry');
         this.btnGoMenu = document.getElementById('btn-go-menu');
+        this.btnPause = document.getElementById('btn-pause');
+        this.btnBackMenu = document.getElementById('btn-back-menu');
+        this.pauseOverlay = document.getElementById('pause-overlay');
+        this.btnResume = document.getElementById('btn-resume');
+        this.btnPauseRetry = document.getElementById('btn-pause-retry');
+        this.btnPauseMenu = document.getElementById('btn-pause-menu');
+
+        this.isPaused = false;
+        this.gameMessage = document.getElementById('game-message');
+        this.gameMessageHeader = this.gameMessage.querySelector('.msg-header');
+        this.gameMessageBody = this.gameMessage.querySelector('.msg-body');
+        this.messageTimer = 0;
+        this.messageVisible = false;
 
         this.onKeyDown = this.onKeyDown.bind(this);
         this.onKeyUp = this.onKeyUp.bind(this);
@@ -53,6 +68,11 @@ export class GameplayState {
         this.onMenu = this.onMenu.bind(this);
         this.onGoRetry = this.onGoRetry.bind(this);
         this.onGoMenu = this.onGoMenu.bind(this);
+        this.onPause = this.onPause.bind(this);
+        this.onResume = this.onResume.bind(this);
+        this.onPauseRetry = this.onPauseRetry.bind(this);
+        this.onPauseMenu = this.onPauseMenu.bind(this);
+        this.onBackMenu = this.onBackMenu.bind(this);
     }
 
     enter() {
@@ -80,6 +100,7 @@ export class GameplayState {
 
         // HUD
         this.hud.style.display = 'block';
+        this.hudButtons.style.display = 'flex';
         this.stateIndicator.style.display = 'block';
         this.updateStateIndicator();
 
@@ -94,6 +115,11 @@ export class GameplayState {
         this.btnMenu.addEventListener('click', this.onMenu);
         this.btnGoRetry.addEventListener('click', this.onGoRetry);
         this.btnGoMenu.addEventListener('click', this.onGoMenu);
+        this.btnPause.addEventListener('click', this.onPause);
+        this.btnBackMenu.addEventListener('click', this.onBackMenu);
+        this.btnResume.addEventListener('click', this.onResume);
+        this.btnPauseRetry.addEventListener('click', this.onPauseRetry);
+        this.btnPauseMenu.addEventListener('click', this.onPauseMenu);
     }
 
     onKeyDown(e) {
@@ -107,7 +133,17 @@ export class GameplayState {
             return;
         }
 
-        if (this.levelComplete || this.gameOver) return;
+        // Pausar/despausar con Escape
+        if (key === 'escape') {
+            if (this.isPaused) {
+                this.onResume();
+            } else if (!this.gameOver && !this.levelComplete) {
+                this.onPause();
+            }
+            return;
+        }
+
+        if (this.levelComplete || this.gameOver || this.isPaused) return;
 
         // Cambiar estado con X
         if (key === 'x') {
@@ -121,7 +157,7 @@ export class GameplayState {
             this.playerVelY = this.jumpForce;
             this.isGrounded = false;
             this.player.setAnimation('JUMP');
-            this.audio.playStep();
+            this.audio.playJump();
         }
     }
 
@@ -142,17 +178,22 @@ export class GameplayState {
     }
 
     handlePhysics(delta) {
-        if (this.gameOver || this.levelComplete || this.showingTutorial) return;
+        if (this.gameOver || this.levelComplete || this.showingTutorial || this.isPaused) return;
 
         let dx = 0;
 
         // Movimiento horizontal
         if (this.keys['a'] || this.keys['arrowleft']) {
             dx = -this.moveSpeed * delta;
-            this.player.setAnimation('WALK');
+            if (this.isGrounded) this.player.setAnimation('WALK');
+            this.player.faceDirection(false);
         } else if (this.keys['d'] || this.keys['arrowright']) {
             dx = this.moveSpeed * delta;
-            this.player.setAnimation('WALK');
+            if (this.isGrounded) this.player.setAnimation('WALK');
+            this.player.faceDirection(true);
+        } else if (this.keys['s'] || this.keys['arrowdown']) {
+            // Agacharse
+            this.player.setAnimation('CROUCH');
         } else if (this.isGrounded) {
             this.player.setAnimation('IDLE');
         }
@@ -167,17 +208,18 @@ export class GameplayState {
         this.playerVelY += this.gravity * delta;
         const newY = this.player.position.y + this.playerVelY * delta;
 
-        // Colisión con suelo
+        // Buscar suelo debajo del jugador
         const groundY = this.level.getGroundAt(this.player.position.x, this.player.position.y);
-        const playerBottom = groundY + this.player.size / 2;
+        const playerFeetY = groundY + this.player.size / 2;
 
-        if (newY <= playerBottom && this.playerVelY <= 0) {
-            this.player.position.y = playerBottom;
+        // Solo aterrizar si hay una plataforma real (no el deathY)
+        if (groundY > this.level.deathY && newY <= playerFeetY && this.playerVelY <= 0) {
+            this.player.position.y = playerFeetY;
             this.playerVelY = 0;
             this.isGrounded = true;
         } else {
             this.player.position.y = newY;
-            this.isGrounded = false;
+            this.isGrounded = (groundY > this.level.deathY && Math.abs(this.player.position.y - playerFeetY) < 2);
         }
 
         this.player.updatePosition();
@@ -186,7 +228,15 @@ export class GameplayState {
     checkCollisions() {
         if (this.gameOver || this.levelComplete) return;
 
-        // Recoger fragmentos (solo en estado AZUL)
+        // Verificar triggers de mensajes (solo en introducción)
+        if (this.levelIndex === 0) {
+            const trigger = this.level.checkMessageTriggers(this.player);
+            if (trigger) {
+                this.showMessage(trigger.header, trigger.body, trigger.type);
+            }
+        }
+
+        // Recoger fragmentos
         const collected = this.level.checkFragmentCollection(this.player);
         if (collected > 0) {
             this.fragmentsCollected += collected;
@@ -194,12 +244,10 @@ export class GameplayState {
             this.hudFragments.textContent = `FRAGMENTOS: ${this.fragmentsCollected}/${this.totalFragments}`;
         }
 
-        // Colisión con láseres
+        // Colisión con láseres (muere siempre al tocar un láser)
         if (this.level.checkLaserCollision(this.player)) {
-            if (this.player.state !== 'RED') {
-                this.handleDeath();
-                return;
-            }
+            this.handleDeath();
+            return;
         }
 
         // Caída al vacío
@@ -208,10 +256,24 @@ export class GameplayState {
             return;
         }
 
-        // Meta
-        if (this.level.checkGoalReached(this.player) && this.fragmentsCollected >= this.totalFragments) {
+        // Meta (llegar al final)
+        if (this.level.checkGoalReached(this.player)) {
             this.handleLevelComplete();
         }
+    }
+
+    showMessage(header, body, type = '') {
+        this.gameMessageHeader.textContent = header;
+        this.gameMessageBody.textContent = body;
+        this.gameMessage.className = type;
+        this.gameMessage.style.display = 'block';
+        this.messageVisible = true;
+        this.messageTimer = 0;
+    }
+
+    hideMessage() {
+        this.gameMessage.style.display = 'none';
+        this.messageVisible = false;
     }
 
     handleDeath() {
@@ -237,6 +299,37 @@ export class GameplayState {
         this.stateManager.changeState(STATES.MAIN_MENU);
     }
 
+    onPause() {
+        this.isPaused = true;
+        this.pauseOverlay.classList.add('visible');
+        this.keys = {};
+    }
+
+    onResume() {
+        this.isPaused = false;
+        this.pauseOverlay.classList.remove('visible');
+        this.audio.playClick();
+    }
+
+    onPauseRetry() {
+        this.audio.playClick();
+        this.pauseOverlay.classList.remove('visible');
+        this.isPaused = false;
+        this.resetLevel();
+    }
+
+    onPauseMenu() {
+        this.audio.playClick();
+        this.pauseOverlay.classList.remove('visible');
+        this.isPaused = false;
+        this.stateManager.changeState(STATES.MAIN_MENU);
+    }
+
+    onBackMenu() {
+        this.audio.playClick();
+        this.stateManager.changeState(STATES.MAIN_MENU);
+    }
+
     resetLevel() {
         this.gameOver = false;
         this.fragmentsCollected = 0;
@@ -257,10 +350,13 @@ export class GameplayState {
         this.levelComplete = true;
         this.audio.playLevelComplete();
 
-        const stars = this.calculateStars();
-        this.starsDisplay.textContent = '★ '.repeat(stars) + '☆ '.repeat(3 - stars);
-        this.completeInfo.textContent = `Tiempo: ${Math.floor(this.gameTime)}s | Fragmentos: ${this.fragmentsCollected}/${this.totalFragments}`;
-        this.levelCompleteUI.style.display = 'block';
+        // Guardar progreso
+        ProgressManager.saveLevel(this.levelIndex, this.fragmentsCollected, true);
+
+        // Redirigir al selector de niveles después de una breve pausa
+        setTimeout(() => {
+            this.stateManager.changeState(STATES.LEVEL_SELECT);
+        }, 1200);
     }
 
     calculateStars() {
@@ -286,7 +382,7 @@ export class GameplayState {
     update(delta) {
         this.time += delta;
 
-        if (!this.gameOver && !this.levelComplete && !this.showingTutorial) {
+        if (!this.gameOver && !this.levelComplete && !this.showingTutorial && !this.isPaused) {
             this.gameTime += delta;
             this.hudTime.textContent = `TIEMPO: ${Math.floor(this.gameTime)}s`;
         }
@@ -296,6 +392,14 @@ export class GameplayState {
 
         // Colisiones
         this.checkCollisions();
+
+        // Timer de mensajes (desaparecen después de 4 segundos)
+        if (this.messageVisible) {
+            this.messageTimer += delta;
+            if (this.messageTimer > 4.5) {
+                this.hideMessage();
+            }
+        }
 
         // Actualizar entidades
         if (this.player) {
@@ -313,12 +417,20 @@ export class GameplayState {
         this.btnMenu.removeEventListener('click', this.onMenu);
         this.btnGoRetry.removeEventListener('click', this.onGoRetry);
         this.btnGoMenu.removeEventListener('click', this.onGoMenu);
+        this.btnPause.removeEventListener('click', this.onPause);
+        this.btnBackMenu.removeEventListener('click', this.onBackMenu);
+        this.btnResume.removeEventListener('click', this.onResume);
+        this.btnPauseRetry.removeEventListener('click', this.onPauseRetry);
+        this.btnPauseMenu.removeEventListener('click', this.onPauseMenu);
 
         this.controlsPanel.style.display = 'none';
         this.hud.style.display = 'none';
+        this.hudButtons.style.display = 'none';
         this.stateIndicator.style.display = 'none';
         this.levelCompleteUI.style.display = 'none';
         this.gameOverUI.classList.remove('visible');
+        this.pauseOverlay.classList.remove('visible');
+        this.gameMessage.style.display = 'none';
         this.audio.stopMusic();
     }
 }
