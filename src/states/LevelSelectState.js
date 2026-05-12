@@ -69,28 +69,43 @@ export class LevelSelectState {
             scene.add(btn);
             this.buttons.push(btn);
 
-            // Mostrar fragmentos recogidos (diamantes) al lado del nivel
+            // Mostrar fragmentos recogidos como diamantes visuales
             const fragments = ProgressManager.getFragments(i);
             const totalFragments = 3;
-            let fragmentDisplay = '';
             for (let f = 0; f < totalFragments; f++) {
-                fragmentDisplay += f < fragments ? '◆' : '◇';
+                const collected = f < fragments;
+                const diamondGeo = new THREE.PlaneGeometry(12, 12);
+                const diamondMat = new THREE.MeshBasicMaterial({
+                    color: collected ? 0x40a0ff : 0x222233,
+                    transparent: true,
+                    opacity: collected ? 0.9 : 0.3
+                });
+                const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+                diamond.rotation.z = Math.PI / 4;
+                diamond.position.set(195 + f * 20, y, 1);
+                scene.add(diamond);
+
+                // Glow si está recogido
+                if (collected) {
+                    const glowGeo = new THREE.PlaneGeometry(16, 16);
+                    const glowMat = new THREE.MeshBasicMaterial({
+                        color: 0x40a0ff, transparent: true, opacity: 0.25
+                    });
+                    const glow = new THREE.Mesh(glowGeo, glowMat);
+                    glow.rotation.z = Math.PI / 4;
+                    glow.position.set(195 + f * 20, y, 0.9);
+                    scene.add(glow);
+                }
             }
-            const fragColor = fragments === totalFragments ? 0x00e5ff : (fragments > 0 ? 0x4488aa : 0x333344);
-            const fragText = PixelText.create(fragmentDisplay, 210, y, 12, fragColor);
-            scene.add(fragText);
 
             // Icono de estado (completado/bloqueado)
             if (level.unlocked) {
                 if (ProgressManager.isCompleted(i)) {
-                    const checkIcon = PixelText.create('✓', 260, y, 12, 0x00ff88);
+                    const checkIcon = PixelText.create('✓', 270, y, 12, 0x00ff88);
                     scene.add(checkIcon);
-                } else {
-                    const playIcon = PixelText.create('▶', 260, y, 11, 0x00e5ff);
-                    scene.add(playIcon);
                 }
             } else {
-                const lockIcon = PixelText.create('🔒', 260, y, 11, 0x444444);
+                const lockIcon = PixelText.create('🔒', 270, y, 11, 0x444444);
                 scene.add(lockIcon);
             }
         });
