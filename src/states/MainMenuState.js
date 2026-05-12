@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
 import { PixelText } from '../utils/PixelText.js';
-import { createNeonButton } from '../utils/UIFactory.js';
+import { createNeonButton, redrawButton } from '../utils/UIFactory.js';
 import { createRobotSprite } from '../entities/RobotSprite.js';
 
 export class MainMenuState {
@@ -408,8 +408,7 @@ export class MainMenuState {
             const border = btn.children.find(c => c.userData.isBorder);
             if (border) {
                 const isHovered = btn === this.hoveredBtn;
-                border.material.opacity = isHovered ? 1.0 : 0.5;
-                // Escala sutil al hover
+                redrawButton(border, isHovered ? 1.0 : 0.5);
                 btn.scale.setScalar(isHovered ? 1.03 : 1.0);
             }
         }

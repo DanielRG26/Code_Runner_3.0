@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
 import { PixelText } from '../utils/PixelText.js';
-import { createNeonButton } from '../utils/UIFactory.js';
+import { createNeonButton, redrawButton } from '../utils/UIFactory.js';
 import { createRobotSprite } from '../entities/RobotSprite.js';
 
 export class LevelSelectState {
@@ -195,7 +195,8 @@ export class LevelSelectState {
         for (const btn of this.buttons) {
             const border = btn.children.find(c => c.userData.isBorder);
             if (border && btn.userData.unlocked !== false) {
-                border.material.opacity = (btn === this.hoveredBtn) ? 1.0 : 0.6;
+                const isHovered = btn === this.hoveredBtn;
+                redrawButton(border, isHovered ? 1.0 : 0.5);
             }
         }
     }
