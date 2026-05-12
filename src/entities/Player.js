@@ -99,9 +99,12 @@ export class Player {
         const jumpEarBack = isJumping ? 3 : 0;
         const jumpFlame = isJumping ? 4 + Math.sin(t * 20) * 2 : 0;
 
-        // CROUCH: comprimido
-        const crouchSquish = isCrouching ? 5 : 0;
-        const crouchLegBend = isCrouching ? -3 : 0;
+        // CROUCH: cuerpo aplastado, orejas completamente bajas pegadas al cuerpo
+        const crouchSquish    = isCrouching ? 8  : 0;
+        const crouchLegBend   = isCrouching ? -4 : 0;
+        const crouchEarDown   = isCrouching ? 10 : 0;  // orejas caen hacia abajo
+        const crouchEarFold   = isCrouching ? 6  : 0;  // orejas se pegan al cuerpo
+        const crouchHeadLow   = isCrouching ? 5  : 0;  // cabeza baja
 
         // Base Y
         const bY = 2 + crouchSquish + jumpStretch;
@@ -179,7 +182,7 @@ export class Player {
         ctx.fillRect(20, bY + 24 - walkBob + breathe, 4, 2);
 
         // --- CABEZA ---
-        const headY = bY + 3 - walkBob + breathe + (isCrouching ? 3 : 0);
+        const headY = bY + 3 - walkBob + breathe + crouchHeadLow;
         // Casco blanco
         ctx.fillStyle = white;
         ctx.fillRect(12, headY + 2, 24, 8);
@@ -265,23 +268,42 @@ export class Player {
         ctx.fillRect(16, headY + 18, 1, 1);
 
         // --- OREJAS ---
-        const earY = headY + 5 + earFlop + jumpEarBack;
-        const earH = isCrouching ? 6 : 8;
+        // En CROUCH: orejas completamente bajas, pegadas al cuerpo
+        const earY = isCrouching
+            ? headY + 8 + crouchEarDown          // caen al nivel del visor
+            : headY + 5 + earFlop + jumpEarBack;
+        const earH = isCrouching ? 4 : 8;        // orejas cortas y aplastadas al agacharse
+
         // Oreja izquierda
         ctx.fillStyle = darkBlue;
-        ctx.fillRect(6, earY, 5, 4);
-        ctx.fillRect(4, earY + 4, 5, earH);
-        ctx.fillRect(5, earY + 4 + earH, 4, 2);
-        ctx.fillStyle = midBlue;
-        ctx.fillRect(5, earY + 5, 3, earH - 2);
+        if (isCrouching) {
+            // Oreja doblada horizontalmente hacia afuera
+            ctx.fillRect(3,  earY,     8, 3);    // brazo horizontal
+            ctx.fillRect(3,  earY + 3, 5, 2);    // punta caída
+            ctx.fillStyle = midBlue;
+            ctx.fillRect(4,  earY + 1, 5, 2);
+        } else {
+            ctx.fillRect(6, earY, 5, 4);
+            ctx.fillRect(4, earY + 4, 5, earH);
+            ctx.fillRect(5, earY + 4 + earH, 4, 2);
+            ctx.fillStyle = midBlue;
+            ctx.fillRect(5, earY + 5, 3, earH - 2);
+        }
 
         // Oreja derecha
         ctx.fillStyle = darkBlue;
-        ctx.fillRect(37, earY, 5, 4);
-        ctx.fillRect(39, earY + 4, 5, earH);
-        ctx.fillRect(39, earY + 4 + earH, 4, 2);
-        ctx.fillStyle = midBlue;
-        ctx.fillRect(40, earY + 5, 3, earH - 2);
+        if (isCrouching) {
+            ctx.fillRect(37, earY,     8, 3);
+            ctx.fillRect(40, earY + 3, 5, 2);
+            ctx.fillStyle = midBlue;
+            ctx.fillRect(39, earY + 1, 5, 2);
+        } else {
+            ctx.fillRect(37, earY, 5, 4);
+            ctx.fillRect(39, earY + 4, 5, earH);
+            ctx.fillRect(39, earY + 4 + earH, 4, 2);
+            ctx.fillStyle = midBlue;
+            ctx.fillRect(40, earY + 5, 3, earH - 2);
+        }
 
         // --- Partículas de propulsor al saltar ---
         if (isJumping) {

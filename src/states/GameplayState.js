@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
 import { Level1 } from '../levels/Level1.js';
+import { Level2 } from '../levels/Level2.js';
 import { Player } from '../entities/Player.js';
 
 export class GameplayState {
@@ -79,10 +80,16 @@ export class GameplayState {
         scene.background = new THREE.Color(0x040406);
 
         // Música
-        this.audio.startMusic();
+        this.audio.startMusic(this.levelIndex === 2 ? 1 : 0);
 
         // Crear nivel
-        this.level = new Level1(scene);
+        switch (this.levelIndex) {
+            case 2:
+                this.level = new Level2(scene);
+                break;
+            default:
+                this.level = new Level1(scene);
+        }
         this.level.build();
 
         // Crear jugador
@@ -227,12 +234,17 @@ export class GameplayState {
     checkCollisions() {
         if (this.gameOver || this.levelComplete) return;
 
-        // Verificar triggers de mensajes (solo en introducción)
-        if (this.levelIndex === 0) {
+        // Triggers de mensajes
+        if (this.level.checkMessageTriggers) {
             const trigger = this.level.checkMessageTriggers(this.player);
             if (trigger) {
                 this.showMessage(trigger.header, trigger.body, trigger.type);
             }
+        }
+
+        // Checkpoints (nivel 2+)
+        if (this.level.updateCheckpoints) {
+            this.level.updateCheckpoints(this.player);
         }
 
         // Recoger fragmentos
@@ -243,10 +255,38 @@ export class GameplayState {
             this.hudFragments.textContent = `FRAGMENTOS: ${this.fragmentsCollected}/${this.totalFragments}`;
         }
 
-        // Colisión con láseres (muere siempre al tocar un láser)
-        if (this.level.checkLaserCollision(this.player)) {
+        // Colisión con láseres (nivel 1)
+        if (this.level.checkLaserCollision && this.level.checkLaserCollision(this.player)) {
             this.handleDeath();
             return;
+        }
+
+        // Colisión con ácido (nivel 2)
+        if (this.level.checkAcidCollision && this.level.checkAcidCollision(this.player)) {
+            this.handleDeath();
+            return;
+        }
+
+        // Colisión con vapor activo (nivel 2)
+        if (this.level.checkSteamCollision && this.level.checkSteamCollision(this.player)) {
+            this.handleDeath();
+            return;
+        }
+
+        // Colisión con centinelas (nivel 2)
+        if (this.level.checkSentinelCollision && this.level.checkSentinelCollision(this.player)) {
+            this.handleDeath();
+            return;
+        }
+
+        // Sonido de vapor al activarse
+        if (this.level.steamPipes) {
+            for (const pipe of this.level.steamPipes) {
+                if (pipe._playSteamSound) {
+                    this.audio.playSteam();
+                    pipe._playSteamSound = false;
+                }
+            }
         }
 
         // Caída al vacío
@@ -255,7 +295,7 @@ export class GameplayState {
             return;
         }
 
-        // Meta (llegar al final)
+        // Meta
         if (this.level.checkGoalReached(this.player)) {
             this.handleLevelComplete();
         }
@@ -276,11 +316,27 @@ export class GameplayState {
     }
 
     handleDeath() {
-        this.gameOver = true;
+        if (this.gameOver) return;
         this.audio.playError();
         this.player.playDeathAnimation();
 
-        // Mostrar pantalla de Game Over después de la animación
+        // Nivel 2+: respawn en checkpoint, no game over inmediato
+        if (this.levelIndex >= 1 && this.level.activeCheckpoint) {
+            this.keys = {};
+            this.playerVelY = 0;
+            this.isGrounded = false;
+            const cp = this.level.activeCheckpoint;
+            setTimeout(() => {
+                this.player.reset(cp.x, cp.y);
+                this.player.position.x = cp.x;
+                this.player.position.y = cp.y;
+                this.player.updatePosition();
+            }, 600);
+            return;
+        }
+
+        // Nivel 0: game over clásico
+        this.gameOver = true;
         setTimeout(() => {
             this.gameOverUI.classList.add('visible');
         }, 800);

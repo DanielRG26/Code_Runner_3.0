@@ -28,10 +28,17 @@ export class AudioManager {
     }
 
     // --- Música ambiental lo-fi synthwave ---
-    startMusic() {
+    startMusic(level = 0) {
         if (!this.unlocked || this.musicPlaying) return;
         this.musicPlaying = true;
+        if (level === 1) {
+            this._startMusicLevel2();
+        } else {
+            this._startMusicLevel1();
+        }
+    }
 
+    _startMusicLevel1() {
         const ctx = this.ctx;
         const now = ctx.currentTime;
 
@@ -243,5 +250,134 @@ export class AudioManager {
             curve[i] = ((Math.PI + amount) * x) / (Math.PI + amount * Math.abs(x));
         }
         return curve;
+    }
+
+    // --- Música synthwave ambiental nivel 2 (ritmo constante, tranquilo) ---
+    _startMusicLevel2() {
+        const ctx = this.ctx;
+        const now = ctx.currentTime;
+
+        // Pad de fondo — acorde menor en Do (Cm)
+        const padFreqs = [65.4, 77.8, 98.0]; // C2, Eb2, G2
+        padFreqs.forEach(freq => {
+            const osc = ctx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.value = freq;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 180;
+            const gain = ctx.createGain();
+            gain.gain.value = 0.08;
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.musicGain);
+            osc.start(now);
+            this.musicOscillators.push(osc);
+        });
+
+        // LFO lento para movimiento de filtro
+        const lfo = ctx.createOscillator();
+        lfo.type = 'sine';
+        lfo.frequency.value = 0.12;
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = 40;
+        lfo.connect(lfoGain);
+        // conectar al filtro del primer pad (índice 0 de musicOscillators)
+        lfo.start(now);
+        this.musicOscillators.push(lfo);
+
+        // Pulso de bajo (kick sintético cada 0.6s)
+        this._scheduleKick(now);
+
+        // Melodía ambiental suave
+        this._playLevel2Melody(now);
+    }
+
+    _scheduleKick(startTime) {
+        if (!this.musicPlaying || !this.unlocked) return;
+        const ctx = this.ctx;
+        const interval = 0.6;
+
+        const playKick = (t) => {
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(80, t);
+            osc.frequency.exponentialRampToValueAtTime(30, t + 0.12);
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.18, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+            osc.connect(gain);
+            gain.connect(this.musicGain);
+            osc.start(t);
+            osc.stop(t + 0.2);
+        };
+
+        // Programar 8 kicks y luego hacer loop
+        for (let i = 0; i < 8; i++) {
+            playKick(startTime + i * interval);
+        }
+        const loopDuration = 8 * interval * 1000;
+        setTimeout(() => {
+            if (this.musicPlaying) this._scheduleKick(this.ctx.currentTime);
+        }, loopDuration - 50);
+    }
+
+    _playLevel2Melody(startTime) {
+        if (!this.unlocked) return;
+        const ctx = this.ctx;
+        // Escala de Cm — notas suaves y espaciadas
+        const notes = [130.8, 155.6, 174.6, 196, 220, 196, 174.6, 155.6];
+        const noteLen = 1.1;
+
+        notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            const env = ctx.createGain();
+            env.gain.value = 0;
+            const t = startTime + i * noteLen;
+            env.gain.setValueAtTime(0, t);
+            env.gain.linearRampToValueAtTime(0.05, t + 0.08);
+            env.gain.exponentialRampToValueAtTime(0.001, t + noteLen * 0.85);
+            osc.connect(env);
+            env.connect(this.musicGain);
+            osc.start(t);
+            osc.stop(t + noteLen);
+        });
+
+        const totalDuration = notes.length * noteLen;
+        setTimeout(() => {
+            if (this.musicPlaying) this._playLevel2Melody(this.ctx.currentTime);
+        }, totalDuration * 1000);
+    }
+
+    // --- Sonido "pshhh" de vapor ---
+    playSteam() {
+        if (!this.unlocked) return;
+        const ctx = this.ctx;
+        const bufferSize = ctx.sampleRate * 0.4;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1);
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 3000;
+        filter.Q.value = 0.5;
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.38);
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.sfxGain);
+        source.start();
+        source.stop(ctx.currentTime + 0.4);
     }
 }
