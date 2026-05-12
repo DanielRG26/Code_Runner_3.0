@@ -169,9 +169,9 @@ export class MainMenuState {
         scene.add(border);
 
         // Texto del panel
-        const unitText = PixelText.create('UNIDAD: C-R01', -410, 250, 8, 0x00e5ff);
+        const unitText = PixelText.create('UNIDAD: C-R01', -410, 250, 11, 0x00e5ff);
         scene.add(unitText);
-        const stateText = PixelText.create('ESTADO: DESCONOCIDO', -395, 235, 7, 0x00e5ff);
+        const stateText = PixelText.create('ESTADO: DESCONOCIDO', -395, 232, 10, 0x00e5ff);
         scene.add(stateText);
 
         // Línea de heartbeat simulada
@@ -198,7 +198,7 @@ export class MainMenuState {
             if (line) {
                 const color = line.includes('ERROR') ? 0xff4040 : 0x00e5ff;
                 const opacity = line.startsWith('> E') ? 0.7 : 0.5;
-                const txt = PixelText.create(line, -380, 160 - i * 18, 6, color);
+                const txt = PixelText.create(line, -380, 160 - i * 22, 9, color);
                 txt.material.opacity = opacity;
                 scene.add(txt);
             }
@@ -223,13 +223,13 @@ export class MainMenuState {
         warnBorder.position.set(420, 240, -1.1);
         scene.add(warnBorder);
 
-        const warnIcon = PixelText.create('⚠', 380, 250, 12, 0xffaa00);
+        const warnIcon = PixelText.create('⚠', 380, 250, 16, 0xffaa00);
         scene.add(warnIcon);
-        const warnTitle = PixelText.create('ADVERTENCIA:', 430, 255, 7, 0xffaa00);
+        const warnTitle = PixelText.create('ADVERTENCIA:', 430, 255, 10, 0xffaa00);
         scene.add(warnTitle);
-        const warnText = PixelText.create('DATOS CORRUPTOS', 430, 240, 6, 0x00e5ff);
+        const warnText = PixelText.create('DATOS CORRUPTOS', 430, 238, 9, 0x00e5ff);
         scene.add(warnText);
-        const warnText2 = PixelText.create('DETECTADOS', 430, 226, 6, 0x00e5ff);
+        const warnText2 = PixelText.create('DETECTADOS', 430, 222, 9, 0x00e5ff);
         scene.add(warnText2);
     }
 
@@ -241,7 +241,7 @@ export class MainMenuState {
         this.buttons.push(btnStart);
 
         // Subtexto del botón
-        const subStart = PixelText.create('EJECUTAR PROTOCOLO', 100, 10, 6, 0x88aacc);
+        const subStart = PixelText.create('EJECUTAR PROTOCOLO', 100, 10, 9, 0x88aacc);
         scene.add(subStart);
 
         // Botón SECTORES_DE_MEMORIA
@@ -250,7 +250,7 @@ export class MainMenuState {
         scene.add(btnLevels);
         this.buttons.push(btnLevels);
 
-        const subLevels = PixelText.create('EXPLORAR RECUERDOS', 100, -80, 6, 0x88aacc);
+        const subLevels = PixelText.create('EXPLORAR RECUERDOS', 100, -80, 9, 0x88aacc);
         scene.add(subLevels);
     }
 
@@ -260,7 +260,7 @@ export class MainMenuState {
         scene.add(this.robot);
 
         // Etiqueta
-        const label = PixelText.create('C-R01', -300, -195, 9, 0x88aacc);
+        const label = PixelText.create('C-R01', -300, -195, 11, 0x88aacc);
         scene.add(label);
 
         // Burbuja de diálogo
@@ -280,20 +280,26 @@ export class MainMenuState {
         bubbleBorder.position.set(-220, -90, 0.9);
         scene.add(bubbleBorder);
 
-        const bubbleText1 = PixelText.create('¿Quién soy?', -220, -83, 6, 0x00e5ff);
+        const bubbleText1 = PixelText.create('¿Quién soy?', -220, -83, 8, 0x00e5ff);
         scene.add(bubbleText1);
-        const bubbleText2 = PixelText.create('¿Por qué duele tanto', -220, -96, 5, 0x00e5ff);
+        const bubbleText2 = PixelText.create('¿Por qué duele tanto', -220, -98, 7, 0x00e5ff);
         scene.add(bubbleText2);
-        const bubbleText3 = PixelText.create('existir?', -220, -107, 5, 0x00e5ff);
+        const bubbleText3 = PixelText.create('existir?', -220, -111, 7, 0x00e5ff);
         scene.add(bubbleText3);
     }
 
     createBottomLinks(scene) {
-        // Créditos y Salir abajo centro
-        const credits = PixelText.create('</> CRÉDITOS', -40, -260, 8, 0x88aacc);
-        scene.add(credits);
-        const exit = PixelText.create('⏻ SALIR', 80, -260, 8, 0x88aacc);
-        scene.add(exit);
+        // Créditos
+        const creditsBtn = createNeonButton('</> CRÉDITOS', -60, -255, 160, 36);
+        creditsBtn.userData = { action: 'credits' };
+        scene.add(creditsBtn);
+        this.buttons.push(creditsBtn);
+
+        // Salir
+        const exitBtn = createNeonButton('⏻ SALIR', 120, -255, 140, 36);
+        exitBtn.userData = { action: 'exit' };
+        scene.add(exitBtn);
+        this.buttons.push(exitBtn);
     }
 
     onMouseMove(e) {
@@ -310,10 +316,89 @@ export class MainMenuState {
                 const action = btn.userData.action;
                 if (action === 'start' || action === 'levels') {
                     this.stateManager.changeState(STATES.LEVEL_SELECT);
+                } else if (action === 'credits') {
+                    this.showCredits();
+                } else if (action === 'exit') {
+                    this.showExit();
                 }
                 break;
             }
         }
+    }
+
+    showCredits() {
+        // Crear overlay de créditos
+        if (this.creditsOverlay) return;
+        this.creditsOverlay = document.createElement('div');
+        this.creditsOverlay.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(2, 2, 8, 0.95); z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-family: monospace; color: #00e5ff;
+        `;
+        this.creditsOverlay.innerHTML = `
+            <h2 style="font-size: 24px; letter-spacing: 4px; margin-bottom: 30px; text-shadow: 0 0 10px #00e5ff66;">// CRÉDITOS</h2>
+            <p style="font-size: 14px; margin: 6px 0; color: #00e5ffcc;">CODE RUNNER: FRAGMENTOS DE CONSCIENCIA</p>
+            <p style="font-size: 12px; margin: 6px 0; color: #00e5ff88;">─────────────────────</p>
+            <p style="font-size: 13px; margin: 8px 0; color: #88ccdd;">Desarrollo: Daniel Guevara</p>
+            <p style="font-size: 13px; margin: 8px 0; color: #88ccdd;">Diseño UI: Juliana</p>
+            <p style="font-size: 13px; margin: 8px 0; color: #88ccdd;">Diseño: Helen</p>
+            <p style="font-size: 12px; margin: 6px 0; color: #00e5ff88;">─────────────────────</p>
+            <p style="font-size: 11px; margin: 8px 0; color: #00e5ff66;">Universidad Cooperativa de Colombia</p>
+            <p style="font-size: 11px; margin: 4px 0; color: #00e5ff44;">© 2026</p>
+            <button style="
+                margin-top: 30px; background: transparent; border: 1px solid #00e5ff;
+                color: #00e5ff; padding: 10px 28px; font-family: monospace;
+                font-size: 12px; cursor: pointer; letter-spacing: 1px;
+            ">VOLVER</button>
+        `;
+        document.body.appendChild(this.creditsOverlay);
+        this.creditsOverlay.querySelector('button').addEventListener('click', () => {
+            this.audio.playClick();
+            document.body.removeChild(this.creditsOverlay);
+            this.creditsOverlay = null;
+        });
+    }
+
+    showExit() {
+        // Crear overlay de despedida
+        if (this.exitOverlay) return;
+        this.exitOverlay = document.createElement('div');
+        this.exitOverlay.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(2, 2, 8, 0.95); z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-family: monospace; color: #00e5ff;
+        `;
+        this.exitOverlay.innerHTML = `
+            <h2 style="font-size: 20px; letter-spacing: 3px; margin-bottom: 20px; text-shadow: 0 0 10px #00e5ff66;">// DESCONEXIÓN</h2>
+            <p style="font-size: 13px; margin: 8px 0; color: #00e5ffaa;">¿Deseas cerrar la conexión con C-R01?</p>
+            <p style="font-size: 11px; margin: 4px 0; color: #00e5ff66;">Los fragmentos recuperados se perderán...</p>
+            <div style="margin-top: 24px; display: flex; gap: 14px;">
+                <button id="exit-confirm" style="
+                    background: transparent; border: 1px solid #ff4040;
+                    color: #ff4040; padding: 10px 24px; font-family: monospace;
+                    font-size: 12px; cursor: pointer;
+                ">DESCONECTAR</button>
+                <button id="exit-cancel" style="
+                    background: transparent; border: 1px solid #00e5ff;
+                    color: #00e5ff; padding: 10px 24px; font-family: monospace;
+                    font-size: 12px; cursor: pointer;
+                ">CANCELAR</button>
+            </div>
+        `;
+        document.body.appendChild(this.exitOverlay);
+        this.exitOverlay.querySelector('#exit-confirm').addEventListener('click', () => {
+            document.body.removeChild(this.exitOverlay);
+            this.exitOverlay = null;
+            // Mostrar pantalla negra de despedida
+            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#000;font-family:monospace;color:#00e5ff44;font-size:14px;">// CONEXIÓN TERMINADA. Hasta pronto, C-R01.</div>';
+        });
+        this.exitOverlay.querySelector('#exit-cancel').addEventListener('click', () => {
+            this.audio.playClick();
+            document.body.removeChild(this.exitOverlay);
+            this.exitOverlay = null;
+        });
     }
 
     update(delta) {
