@@ -6,6 +6,9 @@ import { LevelSelectState } from './LevelSelectState.js';
 import { GameplayState } from './GameplayState.js';
 import { Transition } from '../core/Transition.js';
 
+// Registro de niveles desbloqueados (persiste en memoria durante la sesión)
+export const unlockedLevels = new Set([0, 1]);
+
 export const STATES = {
     MAIN_MENU: 'MAIN_MENU',
     LEVEL_SELECT: 'LEVEL_SELECT',

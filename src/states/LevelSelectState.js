@@ -42,12 +42,12 @@ export class LevelSelectState {
 
         // Niveles
         const levels = [
-            { name: '> INTRODUCCIÓN', icon: '▶', unlocked: true },
-            { name: '> NIVEL_1', icon: '◠', unlocked: false },
-            { name: '> NIVEL_2', icon: '⚡', unlocked: false },
-            { name: '> NIVEL_3', icon: '⚙', unlocked: false },
-            { name: '> NIVEL_4', icon: '◎', unlocked: false },
-            { name: '> NIVEL_5', icon: '✦', unlocked: false }
+            { name: '> INTRODUCCIÓN',          icon: '▶', unlocked: true  },
+            { name: '> NIVEL_1',               icon: '◠', unlocked: false },
+            { name: '> NIVEL_2: ZONA QUÍMICA', icon: '⚗', unlocked: true  },
+            { name: '> NIVEL_3',               icon: '⚡', unlocked: false },
+            { name: '> NIVEL_4',               icon: '⚙', unlocked: false },
+            { name: '> NIVEL_5',               icon: '✦', unlocked: false }
         ];
 
         const startY = 140;
