@@ -1,7 +1,6 @@
 /**
- * MainMenuState - Menú principal rediseñado basado en referencia de Juliana
- * Layout: Info panel izquierda, título centro-derecha, botones centro,
- * robot C-R01 abajo-izquierda, advertencia arriba-derecha, créditos abajo
+ * MainMenuState - Menú principal atractivo para niños
+ * Animaciones suaves, partículas flotantes, robot animado, colores vibrantes
  */
 import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
@@ -19,6 +18,7 @@ export class MainMenuState {
         this.cursorTimer = 0;
         this.buttons = [];
         this.hoveredBtn = null;
+        this.particles = [];
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         this.onMouseMove = this.onMouseMove.bind(this);
@@ -31,19 +31,17 @@ export class MainMenuState {
 
         this.audio.startMusic();
         this.createBackground(scene);
+        this.createParticles(scene);
         this.createTitle(scene);
-        this.createLeftPanel(scene);
-        this.createRightWarning(scene);
         this.createButtons(scene);
         this.createRobot(scene);
-        this.createBottomLinks(scene);
+        this.createDecorations(scene);
 
         window.addEventListener('mousemove', this.onMouseMove);
         window.addEventListener('click', this.onClick);
     }
 
     createBackground(scene) {
-        // Fondo con shader cyberpunk
         const bgGeo = new THREE.PlaneGeometry(1400, 700);
         const bgMat = new THREE.ShaderMaterial({
             uniforms: { uTime: { value: 0 } },
@@ -58,20 +56,18 @@ export class MainMenuState {
                 uniform float uTime;
                 varying vec2 vUv;
                 void main() {
-                    // Degradado oscuro con tinte púrpura a la derecha
-                    vec3 col = mix(vec3(0.02, 0.02, 0.06), vec3(0.04, 0.02, 0.08), vUv.x);
-                    col = mix(col, vec3(0.02, 0.03, 0.06), vUv.y);
-                    // Scanlines
-                    float scan = sin(vUv.y * 500.0 + uTime * 1.5) * 0.01;
-                    col += scan;
-                    // Glow púrpura sutil a la derecha
-                    float purpleGlow = smoothstep(0.5, 1.0, vUv.x) * smoothstep(0.2, 0.6, vUv.y);
-                    col += vec3(0.08, 0.0, 0.12) * purpleGlow * (0.5 + sin(uTime * 0.5) * 0.2);
-                    // Noise
-                    float noise = fract(sin(dot(vUv * 50.0 + uTime * 0.02, vec2(12.9898, 78.233))) * 43758.5453);
-                    col += noise * 0.006;
+                    vec3 col = mix(vec3(0.02, 0.02, 0.07), vec3(0.05, 0.02, 0.1), vUv.x);
+                    col = mix(col, vec3(0.01, 0.04, 0.08), vUv.y);
+                    // Glow púrpura suave
+                    float glow = smoothstep(0.4, 0.9, vUv.x) * smoothstep(0.2, 0.7, vUv.y);
+                    col += vec3(0.06, 0.0, 0.1) * glow * (0.6 + sin(uTime * 0.4) * 0.2);
+                    // Glow cian abajo
+                    float cyanGlow = smoothstep(0.6, 0.0, vUv.y) * 0.03;
+                    col += vec3(0.0, cyanGlow, cyanGlow * 1.2);
+                    // Scanlines suaves
+                    col += sin(vUv.y * 300.0 + uTime) * 0.008;
                     // Viñeta
-                    float vig = 1.0 - length((vUv - 0.5) * 1.3) * 0.4;
+                    float vig = 1.0 - length((vUv - 0.5) * 1.2) * 0.35;
                     col *= vig;
                     gl_FragColor = vec4(col, 1.0);
                 }
@@ -82,8 +78,8 @@ export class MainMenuState {
         scene.add(bg);
         this.bgMaterial = bgMat;
 
-        // Grid de suelo (perspectiva falsa)
-        const gridGeo = new THREE.PlaneGeometry(1400, 200);
+        // Grid de suelo animado
+        const gridGeo = new THREE.PlaneGeometry(1400, 180);
         const gridMat = new THREE.ShaderMaterial({
             transparent: true,
             uniforms: { uTime: { value: 0 } },
@@ -98,208 +94,171 @@ export class MainMenuState {
                 uniform float uTime;
                 varying vec2 vUv;
                 void main() {
-                    float gx = step(0.96, fract(vUv.x * 20.0));
-                    float gy = step(0.92, fract(vUv.y * 6.0 + uTime * 0.1));
+                    float gx = step(0.96, fract(vUv.x * 18.0 + uTime * 0.02));
+                    float gy = step(0.9, fract(vUv.y * 5.0 + uTime * 0.08));
                     float grid = max(gx, gy);
-                    float fade = (1.0 - vUv.y) * 0.4;
-                    gl_FragColor = vec4(0.0, 0.9, 1.0, grid * fade * 0.15);
+                    float fade = (1.0 - vUv.y) * 0.5;
+                    gl_FragColor = vec4(0.0, 0.9, 1.0, grid * fade * 0.12);
                 }
             `
         });
         const grid = new THREE.Mesh(gridGeo, gridMat);
-        grid.position.set(0, -220, -8);
+        grid.position.set(0, -210, -8);
         scene.add(grid);
         this.gridMaterial = gridMat;
-
-        // Siluetas de Ecos
-        [-480, -380, 420, 520].forEach(x => {
-            const echo = this.createEcho(x, -120 + Math.random() * 30);
-            scene.add(echo);
-        });
     }
 
-    createEcho(x, y) {
-        const group = new THREE.Group();
-        const bodyGeo = new THREE.PlaneGeometry(24, 48);
-        const bodyMat = new THREE.MeshBasicMaterial({
-            color: 0x0a0a15, transparent: true, opacity: 0.7
-        });
-        group.add(new THREE.Mesh(bodyGeo, bodyMat));
-        const eyeGeo = new THREE.PlaneGeometry(3, 3);
-        const eyeMat = new THREE.MeshBasicMaterial({
-            color: 0x223344, transparent: true, opacity: 0.3
-        });
-        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeL.position.set(-4, 12, 0.1);
-        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeR.position.set(4, 12, 0.1);
-        group.add(eyeL, eyeR);
-        group.position.set(x, y, -6);
-        return group;
+    createParticles(scene) {
+        // Partículas flotantes brillantes (como luciérnagas digitales)
+        for (let i = 0; i < 25; i++) {
+            const size = 2 + Math.random() * 4;
+            const geo = new THREE.PlaneGeometry(size, size);
+            const color = Math.random() > 0.5 ? 0x00e5ff : 0xaa44ff;
+            const mat = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.2 + Math.random() * 0.4
+            });
+            const particle = new THREE.Mesh(geo, mat);
+            particle.position.set(
+                -600 + Math.random() * 1200,
+                -250 + Math.random() * 500,
+                -4 + Math.random() * 2
+            );
+            particle.userData = {
+                baseX: particle.position.x,
+                baseY: particle.position.y,
+                speedX: 0.3 + Math.random() * 0.8,
+                speedY: 0.5 + Math.random() * 1.0,
+                phase: Math.random() * Math.PI * 2
+            };
+            scene.add(particle);
+            this.particles.push(particle);
+        }
     }
 
     createTitle(scene) {
-        // CODE RUNNER - grande, estilo glitch/distorsionado
-        this.titleText = PixelText.create('CODE RUNNER', 80, 200, 56, 0x00e5ff);
+        // CODE RUNNER grande y brillante
+        this.titleText = PixelText.create('CODE RUNNER', 50, 210, 60, 0x00e5ff);
         scene.add(this.titleText);
 
         // Subtítulo
-        this.subtitleText = PixelText.create('FRAGMENTOS DE CONSCIENCIA_', 80, 140, 16, 0x88ccdd);
+        this.subtitleText = PixelText.create('FRAGMENTOS DE CONSCIENCIA_', 50, 145, 18, 0x99ddee);
         scene.add(this.subtitleText);
     }
 
-    createLeftPanel(scene) {
-        // Panel de info superior izquierdo
-        // Borde del panel
-        const panelGeo = new THREE.PlaneGeometry(240, 100);
-        const panelMat = new THREE.MeshBasicMaterial({
-            color: 0x00e5ff, transparent: true, opacity: 0.08
-        });
-        const panel = new THREE.Mesh(panelGeo, panelMat);
-        panel.position.set(-380, 220, -1);
-        scene.add(panel);
-
-        // Borde del panel
-        const borderGeo = new THREE.PlaneGeometry(242, 102);
-        const borderMat = new THREE.MeshBasicMaterial({
-            color: 0x00e5ff, transparent: true, opacity: 0.2
-        });
-        const border = new THREE.Mesh(borderGeo, borderMat);
-        border.position.set(-380, 220, -1.1);
-        scene.add(border);
-
-        // Texto del panel
-        const unitText = PixelText.create('UNIDAD: C-R01', -410, 250, 11, 0x00e5ff);
-        scene.add(unitText);
-        const stateText = PixelText.create('ESTADO: DESCONOCIDO', -395, 232, 10, 0x00e5ff);
-        scene.add(stateText);
-
-        // Línea de heartbeat simulada
-        const hbGeo = new THREE.PlaneGeometry(100, 2);
-        const hbMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.5 });
-        const hb = new THREE.Mesh(hbGeo, hbMat);
-        hb.position.set(-380, 205, 0);
-        scene.add(hb);
-
-        // Texto narrativo izquierdo
-        const lines = [
-            '> DESPIERTAS SIN RECUERDOS.',
-            '> SOLO QUEDAN FRAGMENTOS.',
-            '> ENCUENTRA LA SECUENCIA.',
-            '> RECONSTRUYE QUIEN ERES.',
-            '',
-            '> ESTÁS SOLO...',
-            '> TODO ESTÁ DESTRUIDO...',
-            '> PERO AÚN PUEDES SEGUIR.',
-            '',
-            '> ERROR: CONSCIENCIA INESTABLE.'
-        ];
-        lines.forEach((line, i) => {
-            if (line) {
-                const color = line.includes('ERROR') ? 0xff4040 : 0x00e5ff;
-                const opacity = line.startsWith('> E') ? 0.7 : 0.5;
-                const txt = PixelText.create(line, -380, 160 - i * 22, 9, color);
-                txt.material.opacity = opacity;
-                scene.add(txt);
-            }
-        });
-    }
-
-    createRightWarning(scene) {
-        // Panel de advertencia arriba derecha
-        const warnGeo = new THREE.PlaneGeometry(180, 60);
-        const warnMat = new THREE.MeshBasicMaterial({
-            color: 0x00e5ff, transparent: true, opacity: 0.06
-        });
-        const warn = new THREE.Mesh(warnGeo, warnMat);
-        warn.position.set(420, 240, -1);
-        scene.add(warn);
-
-        const warnBorderGeo = new THREE.PlaneGeometry(182, 62);
-        const warnBorderMat = new THREE.MeshBasicMaterial({
-            color: 0x00e5ff, transparent: true, opacity: 0.2
-        });
-        const warnBorder = new THREE.Mesh(warnBorderGeo, warnBorderMat);
-        warnBorder.position.set(420, 240, -1.1);
-        scene.add(warnBorder);
-
-        const warnIcon = PixelText.create('⚠', 380, 250, 16, 0xffaa00);
-        scene.add(warnIcon);
-        const warnTitle = PixelText.create('ADVERTENCIA:', 430, 255, 10, 0xffaa00);
-        scene.add(warnTitle);
-        const warnText = PixelText.create('DATOS CORRUPTOS', 430, 238, 9, 0x00e5ff);
-        scene.add(warnText);
-        const warnText2 = PixelText.create('DETECTADOS', 430, 222, 9, 0x00e5ff);
-        scene.add(warnText2);
-    }
-
     createButtons(scene) {
-        // Botón INICIAR_SECUENCIA
-        const btnStart = createNeonButton('▶  INICIAR_SECUENCIA', 100, 40, 300, 52);
+        // Botón INICIAR - más grande y llamativo
+        const btnStart = createNeonButton('▶  INICIAR_SECUENCIA', 50, 40, 340, 58);
         btnStart.userData = { action: 'start' };
         scene.add(btnStart);
         this.buttons.push(btnStart);
 
-        // Subtexto del botón
-        const subStart = PixelText.create('EJECUTAR PROTOCOLO', 100, 10, 9, 0x88aacc);
+        const subStart = PixelText.create('¡Comienza la aventura!', 50, 5, 10, 0x88ccdd);
         scene.add(subStart);
 
-        // Botón SECTORES_DE_MEMORIA
-        const btnLevels = createNeonButton('⚙  SECTORES_DE_MEMORIA', 100, -50, 300, 52);
+        // Botón SECTORES
+        const btnLevels = createNeonButton('⚙  SECTORES_DE_MEMORIA', 50, -55, 340, 58);
         btnLevels.userData = { action: 'levels' };
         scene.add(btnLevels);
         this.buttons.push(btnLevels);
 
-        const subLevels = PixelText.create('EXPLORAR RECUERDOS', 100, -80, 9, 0x88aacc);
+        const subLevels = PixelText.create('Elige tu nivel', 50, -90, 10, 0x88ccdd);
         scene.add(subLevels);
+
+        // Botones inferiores
+        const btnCredits = createNeonButton('</> CRÉDITOS', -80, -200, 180, 40);
+        btnCredits.userData = { action: 'credits' };
+        scene.add(btnCredits);
+        this.buttons.push(btnCredits);
+
+        const btnExit = createNeonButton('⏻ SALIR', 130, -200, 150, 40);
+        btnExit.userData = { action: 'exit' };
+        scene.add(btnExit);
+        this.buttons.push(btnExit);
     }
 
     createRobot(scene) {
-        // Robot C-R01 abajo izquierda
-        this.robot = createRobotSprite(-300, -140, 90, 'BLUE');
+        // Robot más grande y centrado a la izquierda
+        this.robot = createRobotSprite(-320, -80, 120, 'BLUE');
         scene.add(this.robot);
 
         // Etiqueta
-        const label = PixelText.create('C-R01', -300, -195, 11, 0x88aacc);
+        const label = PixelText.create('C-R01', -320, -155, 12, 0x88ccdd);
         scene.add(label);
 
-        // Burbuja de diálogo
-        const bubbleGeo = new THREE.PlaneGeometry(120, 40);
+        // Burbuja de diálogo animada
+        const bubbleGeo = new THREE.PlaneGeometry(140, 50);
         const bubbleMat = new THREE.MeshBasicMaterial({
-            color: 0x0a1520, transparent: true, opacity: 0.85
+            color: 0x081828, transparent: true, opacity: 0.9
         });
-        const bubble = new THREE.Mesh(bubbleGeo, bubbleMat);
-        bubble.position.set(-220, -90, 1);
-        scene.add(bubble);
+        this.bubble = new THREE.Mesh(bubbleGeo, bubbleMat);
+        this.bubble.position.set(-220, -20, 1);
+        scene.add(this.bubble);
 
-        const bubbleBorderGeo = new THREE.PlaneGeometry(122, 42);
+        const bubbleBorderGeo = new THREE.PlaneGeometry(143, 53);
         const bubbleBorderMat = new THREE.MeshBasicMaterial({
-            color: 0x00e5ff, transparent: true, opacity: 0.3
+            color: 0x00e5ff, transparent: true, opacity: 0.4
         });
         const bubbleBorder = new THREE.Mesh(bubbleBorderGeo, bubbleBorderMat);
-        bubbleBorder.position.set(-220, -90, 0.9);
+        bubbleBorder.position.set(-220, -20, 0.9);
         scene.add(bubbleBorder);
 
-        const bubbleText1 = PixelText.create('¿Quién soy?', -220, -83, 8, 0x00e5ff);
+        const bubbleText1 = PixelText.create('¿Quién soy?', -220, -12, 10, 0x00e5ff);
         scene.add(bubbleText1);
-        const bubbleText2 = PixelText.create('¿Por qué duele tanto', -220, -98, 7, 0x00e5ff);
+        const bubbleText2 = PixelText.create('¡Ayúdame a recordar!', -220, -30, 9, 0x88ccdd);
         scene.add(bubbleText2);
-        const bubbleText3 = PixelText.create('existir?', -220, -111, 7, 0x00e5ff);
-        scene.add(bubbleText3);
     }
 
-    createBottomLinks(scene) {
-        // Créditos
-        const creditsBtn = createNeonButton('</> CRÉDITOS', -60, -255, 160, 36);
-        creditsBtn.userData = { action: 'credits' };
-        scene.add(creditsBtn);
-        this.buttons.push(creditsBtn);
+    createDecorations(scene) {
+        // Panel info arriba izquierda (simplificado)
+        const panelGeo = new THREE.PlaneGeometry(200, 55);
+        const panelMat = new THREE.MeshBasicMaterial({
+            color: 0x00e5ff, transparent: true, opacity: 0.06
+        });
+        const panel = new THREE.Mesh(panelGeo, panelMat);
+        panel.position.set(-400, 255, -1);
+        scene.add(panel);
 
-        // Salir
-        const exitBtn = createNeonButton('⏻ SALIR', 120, -255, 140, 36);
-        exitBtn.userData = { action: 'exit' };
-        scene.add(exitBtn);
-        this.buttons.push(exitBtn);
+        const panelBorder = new THREE.Mesh(
+            new THREE.PlaneGeometry(202, 57),
+            new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.25 })
+        );
+        panelBorder.position.set(-400, 255, -1.1);
+        scene.add(panelBorder);
+
+        const unitText = PixelText.create('UNIDAD: C-R01', -400, 265, 10, 0x00e5ff);
+        scene.add(unitText);
+        const stateText = PixelText.create('ESTADO: DESCONOCIDO', -400, 245, 9, 0x00e5ff);
+        scene.add(stateText);
+
+        // Advertencia arriba derecha
+        const warnBorder = new THREE.Mesh(
+            new THREE.PlaneGeometry(170, 50),
+            new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.12 })
+        );
+        warnBorder.position.set(430, 258, -1);
+        scene.add(warnBorder);
+
+        const warnIcon = PixelText.create('⚠', 385, 262, 14, 0xffaa00);
+        scene.add(warnIcon);
+        const warnText = PixelText.create('DATOS CORRUPTOS', 445, 265, 8, 0xffaa00);
+        scene.add(warnText);
+        const warnText2 = PixelText.create('DETECTADOS', 445, 250, 8, 0x00e5ff);
+        scene.add(warnText2);
+
+        // Texto narrativo izquierdo (más corto y simple)
+        const narrativeLines = [
+            '> Despiertas sin recuerdos.',
+            '> Solo quedan fragmentos.',
+            '> ¡Encuentra la secuencia!',
+            '> Reconstruye quien eres.',
+        ];
+        narrativeLines.forEach((line, i) => {
+            const txt = PixelText.create(line, -400, 170 - i * 28, 9, 0x00e5ff);
+            txt.material.opacity = 0.55;
+            scene.add(txt);
+        });
     }
 
     onMouseMove(e) {
@@ -327,30 +286,31 @@ export class MainMenuState {
     }
 
     showCredits() {
-        // Crear overlay de créditos
         if (this.creditsOverlay) return;
         this.creditsOverlay = document.createElement('div');
         this.creditsOverlay.style.cssText = `
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(2, 2, 8, 0.95); z-index: 1000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-family: monospace; color: #00e5ff;
+            font-family: monospace; color: #00e5ff; animation: fadeIn 0.3s ease;
         `;
         this.creditsOverlay.innerHTML = `
-            <h2 style="font-size: 24px; letter-spacing: 4px; margin-bottom: 30px; text-shadow: 0 0 10px #00e5ff66;">// CRÉDITOS</h2>
-            <p style="font-size: 14px; margin: 6px 0; color: #00e5ffcc;">CODE RUNNER: FRAGMENTOS DE CONSCIENCIA</p>
-            <p style="font-size: 12px; margin: 6px 0; color: #00e5ff88;">─────────────────────</p>
-            <p style="font-size: 13px; margin: 8px 0; color: #88ccdd;">Desarrollo: Daniel Guevara</p>
-            <p style="font-size: 13px; margin: 8px 0; color: #88ccdd;">Diseño UI: Juliana</p>
-            <p style="font-size: 13px; margin: 8px 0; color: #88ccdd;">Diseño: Helen</p>
-            <p style="font-size: 12px; margin: 6px 0; color: #00e5ff88;">─────────────────────</p>
-            <p style="font-size: 11px; margin: 8px 0; color: #00e5ff66;">Universidad Cooperativa de Colombia</p>
-            <p style="font-size: 11px; margin: 4px 0; color: #00e5ff44;">© 2026</p>
+            <style>@keyframes fadeIn{from{opacity:0}to{opacity:1}}</style>
+            <h2 style="font-size: 28px; letter-spacing: 4px; margin-bottom: 30px; text-shadow: 0 0 12px #00e5ff66;">// CRÉDITOS</h2>
+            <p style="font-size: 16px; margin: 6px 0; color: #00e5ffcc;">CODE RUNNER: FRAGMENTOS DE CONSCIENCIA</p>
+            <p style="font-size: 14px; margin: 6px 0; color: #00e5ff55;">─────────────────────</p>
+            <p style="font-size: 16px; margin: 10px 0; color: #88ddee;">🎮 Desarrollo: Daniel Guevara</p>
+            <p style="font-size: 16px; margin: 10px 0; color: #88ddee;">🎨 Diseño UI: Juliana</p>
+            <p style="font-size: 16px; margin: 10px 0; color: #88ddee;">✨ Diseño: Helen</p>
+            <p style="font-size: 14px; margin: 6px 0; color: #00e5ff55;">─────────────────────</p>
+            <p style="font-size: 14px; margin: 12px 0; color: #00e5ff88;">Universidad Cooperativa de Colombia</p>
+            <p style="font-size: 12px; margin: 4px 0; color: #00e5ff44;">© 2026</p>
             <button style="
-                margin-top: 30px; background: transparent; border: 1px solid #00e5ff;
-                color: #00e5ff; padding: 10px 28px; font-family: monospace;
-                font-size: 12px; cursor: pointer; letter-spacing: 1px;
-            ">VOLVER</button>
+                margin-top: 30px; background: rgba(0,229,255,0.08); border: 2px solid #00e5ff;
+                color: #00e5ff; padding: 12px 32px; font-family: monospace;
+                font-size: 14px; cursor: pointer; letter-spacing: 1px; border-radius: 4px;
+                box-shadow: 0 0 12px #00e5ff33;
+            ">← VOLVER</button>
         `;
         document.body.appendChild(this.creditsOverlay);
         this.creditsOverlay.querySelector('button').addEventListener('click', () => {
@@ -361,38 +321,41 @@ export class MainMenuState {
     }
 
     showExit() {
-        // Crear overlay de despedida
         if (this.exitOverlay) return;
         this.exitOverlay = document.createElement('div');
         this.exitOverlay.style.cssText = `
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(2, 2, 8, 0.95); z-index: 1000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-family: monospace; color: #00e5ff;
+            font-family: monospace; color: #00e5ff; animation: fadeIn 0.3s ease;
         `;
         this.exitOverlay.innerHTML = `
-            <h2 style="font-size: 20px; letter-spacing: 3px; margin-bottom: 20px; text-shadow: 0 0 10px #00e5ff66;">// DESCONEXIÓN</h2>
-            <p style="font-size: 13px; margin: 8px 0; color: #00e5ffaa;">¿Deseas cerrar la conexión con C-R01?</p>
-            <p style="font-size: 11px; margin: 4px 0; color: #00e5ff66;">Los fragmentos recuperados se perderán...</p>
-            <div style="margin-top: 24px; display: flex; gap: 14px;">
+            <style>@keyframes fadeIn{from{opacity:0}to{opacity:1}}</style>
+            <h2 style="font-size: 22px; letter-spacing: 3px; margin-bottom: 20px;">// ¿TE VAS?</h2>
+            <p style="font-size: 16px; margin: 8px 0; color: #00e5ffaa;">¿Seguro que quieres salir?</p>
+            <p style="font-size: 13px; margin: 4px 0; color: #00e5ff66;">C-R01 te estará esperando...</p>
+            <div style="margin-top: 24px; display: flex; gap: 16px;">
                 <button id="exit-confirm" style="
-                    background: transparent; border: 1px solid #ff4040;
-                    color: #ff4040; padding: 10px 24px; font-family: monospace;
-                    font-size: 12px; cursor: pointer;
-                ">DESCONECTAR</button>
+                    background: rgba(255,50,50,0.1); border: 2px solid #ff4040;
+                    color: #ff4040; padding: 12px 28px; font-family: monospace;
+                    font-size: 14px; cursor: pointer; border-radius: 4px;
+                ">SÍ, SALIR</button>
                 <button id="exit-cancel" style="
-                    background: transparent; border: 1px solid #00e5ff;
-                    color: #00e5ff; padding: 10px 24px; font-family: monospace;
-                    font-size: 12px; cursor: pointer;
-                ">CANCELAR</button>
+                    background: rgba(0,229,255,0.08); border: 2px solid #00e5ff;
+                    color: #00e5ff; padding: 12px 28px; font-family: monospace;
+                    font-size: 14px; cursor: pointer; border-radius: 4px;
+                    box-shadow: 0 0 8px #00e5ff33;
+                ">QUEDARME</button>
             </div>
         `;
         document.body.appendChild(this.exitOverlay);
         this.exitOverlay.querySelector('#exit-confirm').addEventListener('click', () => {
             document.body.removeChild(this.exitOverlay);
             this.exitOverlay = null;
-            // Mostrar pantalla negra de despedida
-            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#000;font-family:monospace;color:#00e5ff44;font-size:14px;">// CONEXIÓN TERMINADA. Hasta pronto, C-R01.</div>';
+            document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#000;font-family:monospace;color:#00e5ff55;font-size:16px;flex-direction:column;gap:10px;">
+                <span style="font-size:40px;">🐕</span>
+                <span>Hasta pronto... C-R01 te esperará.</span>
+            </div>`;
         });
         this.exitOverlay.querySelector('#exit-cancel').addEventListener('click', () => {
             this.audio.playClick();
@@ -410,19 +373,23 @@ export class MainMenuState {
             this.cursorTimer = 0;
             this.cursorVisible = !this.cursorVisible;
             if (this.subtitleText) {
-                this.subtitleText.material.opacity = this.cursorVisible ? 1.0 : 0.7;
+                this.subtitleText.material.opacity = this.cursorVisible ? 1.0 : 0.6;
             }
         }
 
         // Fondo animado
-        if (this.bgMaterial) {
-            this.bgMaterial.uniforms.uTime.value = this.time;
-        }
-        if (this.gridMaterial) {
-            this.gridMaterial.uniforms.uTime.value = this.time;
+        if (this.bgMaterial) this.bgMaterial.uniforms.uTime.value = this.time;
+        if (this.gridMaterial) this.gridMaterial.uniforms.uTime.value = this.time;
+
+        // Partículas flotantes
+        for (const p of this.particles) {
+            const d = p.userData;
+            p.position.x = d.baseX + Math.sin(this.time * d.speedX + d.phase) * 20;
+            p.position.y = d.baseY + Math.sin(this.time * d.speedY + d.phase) * 15;
+            p.material.opacity = 0.2 + Math.sin(this.time * 2 + d.phase) * 0.2;
         }
 
-        // Hover
+        // Hover botones
         this.raycaster.setFromCamera(this.mouse, this.renderer.camera);
         let newHovered = null;
         for (const btn of this.buttons) {
@@ -440,13 +407,27 @@ export class MainMenuState {
         for (const btn of this.buttons) {
             const border = btn.children.find(c => c.userData.isBorder);
             if (border) {
-                border.material.opacity = (btn === this.hoveredBtn) ? 1.0 : 0.5;
+                const isHovered = btn === this.hoveredBtn;
+                border.material.opacity = isHovered ? 1.0 : 0.5;
+                // Escala sutil al hover
+                btn.scale.setScalar(isHovered ? 1.03 : 1.0);
             }
         }
 
-        // Robot flotante
+        // Robot flotante con rebote
         if (this.robot) {
-            this.robot.position.y = -140 + Math.sin(this.time * 1.8) * 4;
+            this.robot.position.y = -80 + Math.sin(this.time * 2) * 6;
+            this.robot.rotation.z = Math.sin(this.time * 1.5) * 0.03;
+        }
+
+        // Burbuja flotante
+        if (this.bubble) {
+            this.bubble.position.y = -20 + Math.sin(this.time * 1.8 + 1) * 3;
+        }
+
+        // Título con glow pulsante
+        if (this.titleText) {
+            this.titleText.material.opacity = 0.85 + Math.sin(this.time * 2) * 0.15;
         }
     }
 
@@ -454,6 +435,7 @@ export class MainMenuState {
         window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('click', this.onClick);
         this.buttons = [];
+        this.particles = [];
         this.audio.stopMusic();
     }
 }
