@@ -42,36 +42,44 @@
         #game-message {
             display: none;
             position: absolute;
-            bottom: 80px;
+            bottom: 90px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(5, 10, 20, 0.94);
-            border: 1px solid #00e5ff88;
-            box-shadow: 0 0 12px #00e5ff33, inset 0 0 6px #00e5ff11;
-            padding: 14px 22px;
-            border-radius: 4px;
+            background: rgba(5, 12, 25, 0.95);
+            border: 2px solid #00e5ff;
+            box-shadow: 0 0 20px #00e5ff44, inset 0 0 10px #00e5ff11;
+            padding: 20px 30px;
+            border-radius: 6px;
             color: #00e5ff;
-            font-size: 11px;
-            max-width: 480px;
-            line-height: 1.6;
+            font-size: 16px;
+            max-width: 520px;
+            min-width: 400px;
+            line-height: 1.7;
             text-align: left;
             z-index: 40;
+            animation: msgAppear 0.4s ease-out;
+        }
+        @keyframes msgAppear {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            100% { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
         #game-message .msg-header {
-            font-size: 9px;
+            font-size: 11px;
             letter-spacing: 2px;
-            color: #00e5ff66;
-            margin-bottom: 6px;
+            color: #00e5ff88;
+            margin-bottom: 10px;
         }
         #game-message .msg-body {
-            color: #00e5ffdd;
+            color: #00e5ff;
+            font-size: 16px;
+            font-weight: bold;
         }
-        #game-message.warning .msg-header { color: #ff404088; }
-        #game-message.warning { border-color: #ff404066; box-shadow: 0 0 12px #ff404022; }
-        #game-message.warning .msg-body { color: #ff6060cc; }
-        #game-message.info .msg-header { color: #40a0ff88; }
-        #game-message.info { border-color: #40a0ff66; box-shadow: 0 0 12px #40a0ff22; }
-        #game-message.info .msg-body { color: #60c0ffcc; }
+        #game-message.warning { border-color: #ff5050; box-shadow: 0 0 20px #ff505033; }
+        #game-message.warning .msg-header { color: #ff505088; }
+        #game-message.warning .msg-body { color: #ff7070; }
+        #game-message.info { border-color: #50a0ff; box-shadow: 0 0 20px #50a0ff33; }
+        #game-message.info .msg-header { color: #50a0ff88; }
+        #game-message.info .msg-body { color: #70c0ff; }
 
         /* Controls Tutorial Panel */
         #controls-panel {
