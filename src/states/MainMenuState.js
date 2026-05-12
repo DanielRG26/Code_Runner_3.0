@@ -352,10 +352,8 @@ export class MainMenuState {
         this.exitOverlay.querySelector('#exit-confirm').addEventListener('click', () => {
             document.body.removeChild(this.exitOverlay);
             this.exitOverlay = null;
-            document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#000;font-family:monospace;color:#00e5ff55;font-size:16px;flex-direction:column;gap:10px;">
-                <span style="font-size:40px;">🐕</span>
-                <span>Hasta pronto... C-R01 te esperará.</span>
-            </div>`;
+            // Recargar la página en vez de destruir el DOM
+            window.location.reload();
         });
         this.exitOverlay.querySelector('#exit-cancel').addEventListener('click', () => {
             this.audio.playClick();
