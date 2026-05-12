@@ -156,7 +156,7 @@ export class GameplayState {
             this.playerVelY = this.jumpForce;
             this.isGrounded = false;
             this.player.setAnimation('JUMP');
-            this.audio.playStep();
+            this.audio.playJump();
         }
     }
 
