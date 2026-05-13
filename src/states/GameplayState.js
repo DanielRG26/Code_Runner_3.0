@@ -472,7 +472,6 @@ export class GameplayState {
             cam.position.x += (targetX - cam.position.x) * 0.08;
             cam.position.y += (targetY - cam.position.y) * 0.06;
         }
-        }
         if (this.level) {
             this.level.update(delta);
         }
