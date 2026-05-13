@@ -464,6 +464,14 @@ export class GameplayState {
         // Actualizar entidades
         if (this.player) {
             this.player.update(delta);
+
+            // Cámara sigue al jugador suavemente
+            const cam = this.renderer.camera;
+            const targetX = this.player.position.x;
+            const targetY = this.player.position.y + 30;
+            cam.position.x += (targetX - cam.position.x) * 0.08;
+            cam.position.y += (targetY - cam.position.y) * 0.06;
+        }
         }
         if (this.level) {
             this.level.update(delta);
