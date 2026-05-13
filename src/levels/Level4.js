@@ -24,79 +24,75 @@ export class Level4 {
         this.deathY = -250;
 
         // Plataformas estaticas [x, y, w, h]
+        // Salto máximo del jugador: ~80px vertical, ~120px horizontal
         this.platformData = [
-            // Zona inicio
-            [-550, -110, 160, 20],
-            [-350, -110, 100, 20],
-            // Zona 2 - saltos con acido abajo
-            [-200, -80, 80, 16],
-            [-80, -110, 100, 20],
-            // Zona 3 - plataformas elevadas
-            [60, -50, 90, 16],
-            [180, -80, 70, 16],
-            // Zona 4 - corredor con laseres
-            [300, -110, 200, 20],
-            // Zona 5 - subida
-            [520, -60, 80, 16],
-            [620, -20, 80, 16],
-            [720, 20, 80, 16],
-            // Zona 6 - plataformas altas con centinela
-            [850, 20, 180, 20],
-            // Zona 7 - final
-            [1050, -30, 80, 16],
-            [1150, 20, 100, 16],
-            [1280, 60, 120, 20],
+            // Zona 1 - Inicio (tutorial suave)
+            [-550, -110, 180, 20],
+            [-330, -110, 120, 20],
+            [-170, -110, 100, 20],
+            // Zona 2 - Primeros saltos ascendentes (escalones de ~50px)
+            [-30, -80, 90, 16],
+            [90, -50, 90, 16],
+            // Zona 3 - Corredor con láseres (plano)
+            [220, -50, 250, 20],
+            // Zona 4 - Descenso y subida
+            [500, -80, 80, 16],
+            [620, -50, 80, 16],
+            [740, -20, 80, 16],
+            // Zona 5 - Plataforma larga con centinela
+            [900, -20, 220, 20],
+            // Zona 6 - Saltos finales ascendentes
+            [1100, -20, 80, 16],
+            [1220, 20, 90, 16],
+            [1350, 50, 100, 16],
+            // Zona 7 - Meta
+            [1500, 50, 140, 20],
         ];
 
-        // Plataformas moviles [x, y, w, h, moveX, moveY, speed]
+        // Plataformas moviles (ayudan a cruzar huecos grandes)
         this.movingPlatformData = [
-            { x: -120, y: -30, w: 70, h: 14, moveX: 80, moveY: 0, speed: 1.2 },
-            { x: 450, y: -40, w: 60, h: 14, moveX: 0, moveY: 50, speed: 1.0 },
-            { x: 750, y: 60, w: 70, h: 14, moveX: 60, moveY: 0, speed: 1.5 },
-            { x: 1000, y: 40, w: 60, h: 14, moveX: 0, moveY: -40, speed: 0.8 },
+            { x: -80, y: -80, w: 70, h: 14, moveX: 60, moveY: 0, speed: 0.8 },
+            { x: 470, y: -50, w: 65, h: 14, moveX: 0, moveY: 30, speed: 0.7 },
+            { x: 1050, y: 0, w: 70, h: 14, moveX: 50, moveY: 0, speed: 1.0 },
         ];
 
-        // Plataformas que desaparecen [x, y, w, h, onTime, offTime]
+        // Plataformas que desaparecen (timing generoso)
         this.disappearingPlatformData = [
-            { x: 160, y: -20, w: 60, h: 12, onTime: 2.5, offTime: 1.5 },
-            { x: 620, y: 30, w: 55, h: 12, onTime: 2.0, offTime: 1.8 },
-            { x: 1100, y: -10, w: 60, h: 12, onTime: 2.2, offTime: 1.4 },
+            { x: 160, y: -50, w: 60, h: 12, onTime: 3.0, offTime: 1.2 },
+            { x: 820, y: -20, w: 60, h: 12, onTime: 2.8, offTime: 1.5 },
         ];
 
-        // Laseres con timing [x, y, width, height, onTime, offTime, phase]
+        // Laseres con timing (offTime generoso para pasar)
         this.laserData = [
-            { x: 330, y: -65, width: 4, height: 55, onTime: 2.0, offTime: 1.5, phase: 0 },
-            { x: 390, y: -65, width: 4, height: 55, onTime: 2.0, offTime: 1.5, phase: 1.0 },
-            { x: 450, y: -65, width: 4, height: 55, onTime: 2.0, offTime: 1.5, phase: 2.0 },
-            { x: 900, y: -25, width: 4, height: 50, onTime: 1.8, offTime: 1.2, phase: 0.5 },
-            { x: 960, y: -25, width: 4, height: 50, onTime: 1.8, offTime: 1.2, phase: 1.5 },
+            { x: 280, y: -5, width: 4, height: 50, onTime: 1.8, offTime: 2.0, phase: 0 },
+            { x: 350, y: -5, width: 4, height: 50, onTime: 1.8, offTime: 2.0, phase: 1.2 },
+            { x: 420, y: -5, width: 4, height: 50, onTime: 1.8, offTime: 2.0, phase: 2.4 },
+            { x: 950, y: -65, width: 4, height: 45, onTime: 1.5, offTime: 2.2, phase: 0.5 },
         ];
 
-        // Centinelas enemigos [x, y, patrolLeft, patrolRight, speed]
+        // Centinelas enemigos (patrullan en plataformas largas)
         this.sentinelData = [
-            { x: 850, y: 48, patrolLeft: 850, patrolRight: 1010, speed: 40 },
-            { x: 1200, y: 88, patrolLeft: 1180, patrolRight: 1380, speed: 50 },
+            { x: 900, y: 8, patrolLeft: 810, patrolRight: 1090, speed: 35 },
+            { x: 1500, y: 78, patrolLeft: 1450, patrolRight: 1620, speed: 40 },
         ];
 
-        // Acido en el suelo
+        // Acido en el suelo (en los huecos entre plataformas)
         this.acidData = [
-            { x: -250, y: -200, w: 80, h: 20 },
-            { x: -100, y: -200, w: 80, h: 20 },
-            { x: 50, y: -200, w: 80, h: 20 },
-            { x: 200, y: -200, w: 80, h: 20 },
-            { x: 550, y: -200, w: 100, h: 20 },
-            { x: 750, y: -200, w: 100, h: 20 },
-            { x: 1000, y: -200, w: 120, h: 20 },
+            { x: -250, y: -210, w: 70, h: 16 },
+            { x: -80, y: -210, w: 70, h: 16 },
+            { x: 470, y: -210, w: 80, h: 16 },
+            { x: 680, y: -210, w: 80, h: 16 },
+            { x: 1160, y: -210, w: 80, h: 16 },
         ];
 
-        // Fragmentos en posiciones dificiles
+        // Fragmentos en posiciones alcanzables pero requieren desvío
         this.fragmentData = [
-            { x: -120, y: 10 },
-            { x: 450, y: 20 },
-            { x: 1150, y: 60 },
+            { x: -80, y: -45 },
+            { x: 470, y: -10 },
+            { x: 1350, y: 85 },
         ];
 
-        this.goalData = { x: 1320, y: 100 };
+        this.goalData = { x: 1550, y: 90 };
         this.messageTriggers = [];
     }
 
@@ -414,7 +410,7 @@ export class Level4 {
     // --- Colisiones ---
 
     canMoveTo(x, y, playerSize) {
-        if (x < -650 || x > 1450) return false;
+        if (x < -650 || x > 1700) return false;
         if (y > 400) return false;
         return true;
     }

@@ -26,6 +26,10 @@ export class LevelSelectState {
         const scene = this.renderer.scene;
         scene.background = new THREE.Color(0x080810);
 
+        // Resetear cámara al centro
+        this.renderer.camera.position.x = 0;
+        this.renderer.camera.position.y = 0;
+
         this.createBackground(scene);
 
         // Título
