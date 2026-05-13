@@ -46,7 +46,7 @@ export class LevelSelectState {
             { name: '> NIVEL_1',               icon: '◠', unlocked: false },
             { name: '> NIVEL_2: ZONA QUÍMICA', icon: '⚗', unlocked: true  },
             { name: '> NIVEL_3',               icon: '⚡', unlocked: false },
-            { name: '> NIVEL_4',               icon: '⚙', unlocked: false },
+            { name: '> NIVEL_4: NÚCLEO CORRUPTO', icon: '⚙', unlocked: true  },
             { name: '> NIVEL_5',               icon: '✦', unlocked: false }
         ];
 

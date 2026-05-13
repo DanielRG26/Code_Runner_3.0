@@ -1,0 +1,517 @@
+/**
+ * Level4 - Nucleo de Procesamiento Corrupto
+ * Mapa grande con plataformas moviles, enemigos centinela,
+ * laseres con timing, plataformas que desaparecen, acido en el suelo
+ */
+import * as THREE from 'three';
+
+export class Level4 {
+    constructor(scene) {
+        this.scene = scene;
+        this.platforms = [];
+        this.movingPlatforms = [];
+        this.disappearingPlatforms = [];
+        this.lasers = [];
+        this.sentinels = [];
+        this.acidPools = [];
+        this.fragments = [];
+        this.goal = null;
+        this.time = 0;
+        this._laserGlows = [];
+
+        this.spawnPoint = { x: -550, y: -60 };
+        this.cameraCenter = { x: 100, y: -20 };
+        this.deathY = -250;
+
+        // Plataformas estaticas [x, y, w, h]
+        this.platformData = [
+            // Zona inicio
+            [-550, -110, 160, 20],
+            [-350, -110, 100, 20],
+            // Zona 2 - saltos con acido abajo
+            [-200, -80, 80, 16],
+            [-80, -110, 100, 20],
+            // Zona 3 - plataformas elevadas
+            [60, -50, 90, 16],
+            [180, -80, 70, 16],
+            // Zona 4 - corredor con laseres
+            [300, -110, 200, 20],
+            // Zona 5 - subida
+            [520, -60, 80, 16],
+            [620, -20, 80, 16],
+            [720, 20, 80, 16],
+            // Zona 6 - plataformas altas con centinela
+            [850, 20, 180, 20],
+            // Zona 7 - final
+            [1050, -30, 80, 16],
+            [1150, 20, 100, 16],
+            [1280, 60, 120, 20],
+        ];
+
+        // Plataformas moviles [x, y, w, h, moveX, moveY, speed]
+        this.movingPlatformData = [
+            { x: -120, y: -30, w: 70, h: 14, moveX: 80, moveY: 0, speed: 1.2 },
+            { x: 450, y: -40, w: 60, h: 14, moveX: 0, moveY: 50, speed: 1.0 },
+            { x: 750, y: 60, w: 70, h: 14, moveX: 60, moveY: 0, speed: 1.5 },
+            { x: 1000, y: 40, w: 60, h: 14, moveX: 0, moveY: -40, speed: 0.8 },
+        ];
+
+        // Plataformas que desaparecen [x, y, w, h, onTime, offTime]
+        this.disappearingPlatformData = [
+            { x: 160, y: -20, w: 60, h: 12, onTime: 2.5, offTime: 1.5 },
+            { x: 620, y: 30, w: 55, h: 12, onTime: 2.0, offTime: 1.8 },
+            { x: 1100, y: -10, w: 60, h: 12, onTime: 2.2, offTime: 1.4 },
+        ];
+
+        // Laseres con timing [x, y, width, height, onTime, offTime, phase]
+        this.laserData = [
+            { x: 330, y: -65, width: 4, height: 55, onTime: 2.0, offTime: 1.5, phase: 0 },
+            { x: 390, y: -65, width: 4, height: 55, onTime: 2.0, offTime: 1.5, phase: 1.0 },
+            { x: 450, y: -65, width: 4, height: 55, onTime: 2.0, offTime: 1.5, phase: 2.0 },
+            { x: 900, y: -25, width: 4, height: 50, onTime: 1.8, offTime: 1.2, phase: 0.5 },
+            { x: 960, y: -25, width: 4, height: 50, onTime: 1.8, offTime: 1.2, phase: 1.5 },
+        ];
+
+        // Centinelas enemigos [x, y, patrolLeft, patrolRight, speed]
+        this.sentinelData = [
+            { x: 850, y: 48, patrolLeft: 850, patrolRight: 1010, speed: 40 },
+            { x: 1200, y: 88, patrolLeft: 1180, patrolRight: 1380, speed: 50 },
+        ];
+
+        // Acido en el suelo
+        this.acidData = [
+            { x: -250, y: -200, w: 80, h: 20 },
+            { x: -100, y: -200, w: 80, h: 20 },
+            { x: 50, y: -200, w: 80, h: 20 },
+            { x: 200, y: -200, w: 80, h: 20 },
+            { x: 550, y: -200, w: 100, h: 20 },
+            { x: 750, y: -200, w: 100, h: 20 },
+            { x: 1000, y: -200, w: 120, h: 20 },
+        ];
+
+        // Fragmentos en posiciones dificiles
+        this.fragmentData = [
+            { x: -120, y: 10 },
+            { x: 450, y: 20 },
+            { x: 1150, y: 60 },
+        ];
+
+        this.goalData = { x: 1320, y: 100 };
+        this.messageTriggers = [];
+    }
+
+    build() {
+        this.createBackground();
+        this.createPlatforms();
+        this.createMovingPlatforms();
+        this.createDisappearingPlatforms();
+        this.createAcidPools();
+        this.createLasers();
+        this.createSentinels();
+        this.createFragments();
+        this.createGoal();
+    }
+
+    createBackground() {
+        const bgGeo = new THREE.PlaneGeometry(2200, 800);
+        const bgMat = new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 } },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+            `,
+            fragmentShader: `
+                uniform float uTime;
+                varying vec2 vUv;
+                void main() {
+                    vec3 col = vec3(0.01, 0.01, 0.025);
+                    float gx = step(0.98, fract(vUv.x * 30.0));
+                    float gy = step(0.98, fract(vUv.y * 18.0));
+                    col += (gx + gy) * vec3(0.012, 0.015, 0.02);
+                    col += sin(vUv.y * 500.0 + uTime * 2.0) * 0.005;
+                    float noise = fract(sin(dot(vUv * 80.0 + uTime * 0.05, vec2(12.9898, 78.233))) * 43758.5453);
+                    col += noise * 0.004;
+                    float vig = 1.0 - length((vUv - 0.5) * 1.3) * 0.35;
+                    col *= vig;
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `
+        });
+        const bg = new THREE.Mesh(bgGeo, bgMat);
+        bg.position.z = -5;
+        this.scene.add(bg);
+        this.bgMaterial = bgMat;
+
+        // Cables
+        for (let i = 0; i < 20; i++) {
+            const x = -600 + i * 100;
+            const len = 60 + Math.random() * 100;
+            const geo = new THREE.PlaneGeometry(1.5, len);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x141420, transparent: true, opacity: 0.4 });
+            const cable = new THREE.Mesh(geo, mat);
+            cable.position.set(x, 280 - len / 2, -3);
+            this.scene.add(cable);
+        }
+    }
+
+    createPlatforms() {
+        this.platformData.forEach(([x, y, w, h]) => {
+            const platform = this.createPlatformMesh(x, y, w, h);
+            this.platforms.push({ mesh: platform, x, y, w, h });
+            this.scene.add(platform);
+        });
+    }
+
+    createPlatformMesh(x, y, w, h) {
+        const group = new THREE.Group();
+        const surfGeo = new THREE.PlaneGeometry(w, h);
+        const surfMat = new THREE.MeshBasicMaterial({ color: 0x222233 });
+        group.add(new THREE.Mesh(surfGeo, surfMat));
+        const edgeGeo = new THREE.PlaneGeometry(w, 3);
+        const edgeMat = new THREE.MeshBasicMaterial({ color: 0x3a3a4a });
+        const edge = new THREE.Mesh(edgeGeo, edgeMat);
+        edge.position.set(0, h / 2, 0.1);
+        group.add(edge);
+        const neonGeo = new THREE.PlaneGeometry(w, 1);
+        const neonMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.12 });
+        const neon = new THREE.Mesh(neonGeo, neonMat);
+        neon.position.set(0, h / 2 + 1, 0.2);
+        group.add(neon);
+        group.position.set(x, y, 0);
+        return group;
+    }
+
+    createMovingPlatforms() {
+        this.movingPlatformData.forEach(data => {
+            const mesh = this.createPlatformMesh(data.x, data.y, data.w, data.h);
+            // Color diferente para moviles
+            mesh.children[0].material = new THREE.MeshBasicMaterial({ color: 0x1a2a3a });
+            mesh.children[2].material = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.15 });
+            this.scene.add(mesh);
+            this.movingPlatforms.push({
+                mesh, baseX: data.x, baseY: data.y,
+                w: data.w, h: data.h,
+                moveX: data.moveX, moveY: data.moveY,
+                speed: data.speed, x: data.x, y: data.y
+            });
+        });
+    }
+
+    createDisappearingPlatforms() {
+        this.disappearingPlatformData.forEach(data => {
+            const mesh = this.createPlatformMesh(data.x, data.y, data.w, data.h);
+            mesh.children[0].material = new THREE.MeshBasicMaterial({ color: 0x2a1a2a });
+            mesh.children[2].material = new THREE.MeshBasicMaterial({ color: 0xff44ff, transparent: true, opacity: 0.15 });
+            this.scene.add(mesh);
+            this.disappearingPlatforms.push({
+                mesh, x: data.x, y: data.y, w: data.w, h: data.h,
+                onTime: data.onTime, offTime: data.offTime,
+                visible: true, timer: 0
+            });
+        });
+    }
+
+    createAcidPools() {
+        this.acidData.forEach(data => {
+            const group = new THREE.Group();
+            const poolGeo = new THREE.PlaneGeometry(data.w, data.h);
+            const poolMat = new THREE.MeshBasicMaterial({ color: 0x30ff30, transparent: true, opacity: 0.5 });
+            group.add(new THREE.Mesh(poolGeo, poolMat));
+            const glowGeo = new THREE.PlaneGeometry(data.w, data.h + 6);
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0x30ff30, transparent: true, opacity: 0.12 });
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            glow.position.z = -0.1;
+            group.add(glow);
+            group.position.set(data.x, data.y, 1);
+            this.scene.add(group);
+            this.acidPools.push({ mesh: group, ...data });
+        });
+    }
+
+    createLasers() {
+        this.laserData.forEach(data => {
+            const group = new THREE.Group();
+            // Emisor
+            const emGeo = new THREE.PlaneGeometry(16, 16);
+            const emMat = new THREE.MeshBasicMaterial({ color: 0x3a3a3a });
+            const em = new THREE.Mesh(emGeo, emMat);
+            em.position.y = data.height / 2 + 10;
+            group.add(em);
+            // Ojo
+            const eyeGeo = new THREE.PlaneGeometry(6, 6);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2020 });
+            const eye = new THREE.Mesh(eyeGeo, eyeMat);
+            eye.position.set(0, data.height / 2 + 10, 0.1);
+            group.add(eye);
+            // Rayo
+            const laserGeo = new THREE.PlaneGeometry(data.width, data.height);
+            const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.75 });
+            const beam = new THREE.Mesh(laserGeo, laserMat);
+            group.add(beam);
+            // Glow
+            const glowGeo = new THREE.PlaneGeometry(data.width + 10, data.height);
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.1 });
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            glow.position.z = -0.1;
+            group.add(glow);
+            this._laserGlows.push(glowMat);
+            group.position.set(data.x, data.y, 2);
+            this.scene.add(group);
+            this.lasers.push({ ...data, mesh: group, active: true });
+        });
+    }
+
+    createSentinels() {
+        this.sentinelData.forEach(data => {
+            const group = new THREE.Group();
+            // Cuerpo del centinela
+            const bodyGeo = new THREE.PlaneGeometry(24, 28);
+            const bodyMat = new THREE.MeshBasicMaterial({ color: 0x882222 });
+            group.add(new THREE.Mesh(bodyGeo, bodyMat));
+            // Ojo rojo
+            const eyeGeo = new THREE.PlaneGeometry(8, 4);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.9 });
+            const eye = new THREE.Mesh(eyeGeo, eyeMat);
+            eye.position.set(0, 4, 0.1);
+            group.add(eye);
+            // Patas
+            const legGeo = new THREE.PlaneGeometry(4, 8);
+            const legMat = new THREE.MeshBasicMaterial({ color: 0x661111 });
+            const legL = new THREE.Mesh(legGeo, legMat);
+            legL.position.set(-6, -16, 0);
+            const legR = new THREE.Mesh(legGeo, legMat);
+            legR.position.set(6, -16, 0);
+            group.add(legL, legR);
+            // Glow amenazante
+            const glowGeo = new THREE.PlaneGeometry(30, 34);
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.08 });
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            glow.position.z = -0.1;
+            group.add(glow);
+            group.position.set(data.x, data.y, 3);
+            this.scene.add(group);
+            this.sentinels.push({ ...data, mesh: group, currentX: data.x, direction: 1 });
+        });
+    }
+
+    createFragments() {
+        this.fragmentData.forEach((data, i) => {
+            const group = new THREE.Group();
+            const crystalGeo = new THREE.PlaneGeometry(14, 14);
+            const crystalMat = new THREE.MeshBasicMaterial({ color: 0x40a0ff, transparent: true, opacity: 0.9 });
+            const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+            crystal.rotation.z = Math.PI / 4;
+            group.add(crystal);
+            const glowGeo = new THREE.PlaneGeometry(22, 22);
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0x3080ff, transparent: true, opacity: 0.15 });
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            glow.rotation.z = Math.PI / 4;
+            glow.position.z = -0.1;
+            group.add(glow);
+            group.position.set(data.x, data.y, 3);
+            this.scene.add(group);
+            this.fragments.push({ mesh: group, x: data.x, y: data.y, collected: false, index: i });
+        });
+    }
+
+    createGoal() {
+        const group = new THREE.Group();
+        const portalGeo = new THREE.PlaneGeometry(28, 44);
+        const portalMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.25 });
+        group.add(new THREE.Mesh(portalGeo, portalMat));
+        const borderGeo = new THREE.PlaneGeometry(32, 48);
+        const borderMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.4 });
+        const border = new THREE.Mesh(borderGeo, borderMat);
+        border.position.z = -0.1;
+        group.add(border);
+        const exitCanvas = document.createElement('canvas');
+        exitCanvas.width = 64; exitCanvas.height = 16;
+        const ectx = exitCanvas.getContext('2d');
+        ectx.fillStyle = '#00ff88'; ectx.font = 'bold 12px monospace';
+        ectx.textAlign = 'center'; ectx.fillText('EXIT', 32, 12);
+        const exitTex = new THREE.CanvasTexture(exitCanvas);
+        exitTex.magFilter = THREE.NearestFilter;
+        const exitMesh = new THREE.Mesh(new THREE.PlaneGeometry(32, 8), new THREE.MeshBasicMaterial({ map: exitTex, transparent: true }));
+        exitMesh.position.set(0, 30, 0.1);
+        group.add(exitMesh);
+        group.position.set(this.goalData.x, this.goalData.y, 1);
+        this.goal = group;
+        this.scene.add(group);
+    }
+
+    // --- Colisiones ---
+
+    canMoveTo(x, y, playerSize) {
+        if (x < -650 || x > 1450) return false;
+        if (y > 400) return false;
+        return true;
+    }
+
+    getGroundAt(x, y) {
+        let groundY = this.deathY;
+        const halfPlayer = 14;
+
+        // Plataformas estaticas
+        for (const p of this.platforms) {
+            const pLeft = p.x - p.w / 2;
+            const pRight = p.x + p.w / 2;
+            const pTop = p.y + p.h / 2;
+            if (x >= pLeft - halfPlayer && x <= pRight + halfPlayer) {
+                if (pTop <= y && pTop > groundY) groundY = pTop;
+            }
+        }
+
+        // Plataformas moviles
+        for (const p of this.movingPlatforms) {
+            const pLeft = p.x - p.w / 2;
+            const pRight = p.x + p.w / 2;
+            const pTop = p.y + p.h / 2;
+            if (x >= pLeft - halfPlayer && x <= pRight + halfPlayer) {
+                if (pTop <= y && pTop > groundY) groundY = pTop;
+            }
+        }
+
+        // Plataformas que desaparecen (solo si visibles)
+        for (const p of this.disappearingPlatforms) {
+            if (!p.visible) continue;
+            const pLeft = p.x - p.w / 2;
+            const pRight = p.x + p.w / 2;
+            const pTop = p.y + p.h / 2;
+            if (x >= pLeft - halfPlayer && x <= pRight + halfPlayer) {
+                if (pTop <= y && pTop > groundY) groundY = pTop;
+            }
+        }
+
+        return groundY;
+    }
+
+    checkFragmentCollection(player) {
+        let collected = 0;
+        for (const frag of this.fragments) {
+            if (frag.collected) continue;
+            const dist = Math.sqrt(Math.pow(player.position.x - frag.x, 2) + Math.pow(player.position.y - frag.y, 2));
+            if (dist < 30) { frag.collected = true; frag.mesh.visible = false; collected++; }
+        }
+        return collected;
+    }
+
+    checkLaserCollision(player) {
+        const bounds = player.getBounds();
+        for (const laser of this.lasers) {
+            if (!laser.active) continue;
+            const lL = laser.x - laser.width / 2 - 8;
+            const lR = laser.x + laser.width / 2 + 8;
+            const lT = laser.y + laser.height / 2 + 5;
+            const lB = laser.y - laser.height / 2 - 5;
+            if (bounds.right > lL && bounds.left < lR && bounds.top > lB && bounds.bottom < lT) return true;
+        }
+        return false;
+    }
+
+    checkAcidCollision(player) {
+        const bounds = player.getBounds();
+        for (const acid of this.acidPools) {
+            const aL = acid.x - acid.w / 2;
+            const aR = acid.x + acid.w / 2;
+            const aT = acid.y + acid.h / 2;
+            const aB = acid.y - acid.h / 2;
+            if (bounds.right > aL && bounds.left < aR && bounds.top > aB && bounds.bottom < aT) return true;
+        }
+        return false;
+    }
+
+    checkSentinelCollision(player) {
+        const bounds = player.getBounds();
+        for (const s of this.sentinels) {
+            const sL = s.currentX - 12;
+            const sR = s.currentX + 12;
+            const sT = s.mesh.position.y + 14;
+            const sB = s.mesh.position.y - 14;
+            if (bounds.right > sL && bounds.left < sR && bounds.top > sB && bounds.bottom < sT) return true;
+        }
+        return false;
+    }
+
+    checkGoalReached(player) {
+        const dist = Math.sqrt(Math.pow(player.position.x - this.goalData.x, 2) + Math.pow(player.position.y - this.goalData.y, 2));
+        return dist < 30;
+    }
+
+    checkMessageTriggers() { return null; }
+
+    reset() {
+        for (const frag of this.fragments) { frag.collected = false; frag.mesh.visible = true; }
+        for (const dp of this.disappearingPlatforms) { dp.visible = true; dp.timer = 0; dp.mesh.visible = true; }
+    }
+
+    update(delta) {
+        this.time += delta;
+
+        if (this.bgMaterial) this.bgMaterial.uniforms.uTime.value = this.time;
+
+        // Plataformas moviles
+        for (const p of this.movingPlatforms) {
+            p.x = p.baseX + Math.sin(this.time * p.speed) * p.moveX;
+            p.y = p.baseY + Math.sin(this.time * p.speed) * p.moveY;
+            p.mesh.position.set(p.x, p.y, 0);
+        }
+
+        // Plataformas que desaparecen
+        for (const p of this.disappearingPlatforms) {
+            p.timer += delta;
+            const cycle = p.onTime + p.offTime;
+            const t = p.timer % cycle;
+            const shouldBeVisible = t < p.onTime;
+            if (shouldBeVisible !== p.visible) {
+                p.visible = shouldBeVisible;
+                p.mesh.visible = shouldBeVisible;
+            }
+            // Parpadeo antes de desaparecer
+            if (shouldBeVisible && t > p.onTime - 0.6) {
+                p.mesh.visible = Math.sin(this.time * 20) > 0;
+            }
+        }
+
+        // Laseres con timing
+        for (const laser of this.lasers) {
+            const cycle = laser.onTime + laser.offTime;
+            const t = (this.time + laser.phase) % cycle;
+            const shouldBeActive = t < laser.onTime;
+            laser.active = shouldBeActive;
+            laser.mesh.children[2].visible = shouldBeActive;
+            laser.mesh.children[3].visible = shouldBeActive;
+            laser.mesh.children[1].material.opacity = shouldBeActive ? 1.0 : 0.3;
+        }
+
+        // Centinelas patrullando
+        for (const s of this.sentinels) {
+            s.currentX += s.direction * s.speed * delta;
+            if (s.currentX >= s.patrolRight) { s.currentX = s.patrolRight; s.direction = -1; }
+            if (s.currentX <= s.patrolLeft) { s.currentX = s.patrolLeft; s.direction = 1; }
+            s.mesh.position.x = s.currentX;
+            s.mesh.scale.x = s.direction > 0 ? 1 : -1;
+        }
+
+        // Fragmentos flotantes
+        for (const frag of this.fragments) {
+            if (!frag.collected) {
+                frag.mesh.position.y = frag.y + Math.sin(this.time * 2.5 + frag.index * 2) * 5;
+            }
+        }
+
+        // Glow laseres
+        this._laserGlows.forEach((mat, i) => {
+            mat.opacity = 0.06 + Math.sin(this.time * 6 + i * 2) * 0.04;
+        });
+
+        // Acido pulsante
+        for (const acid of this.acidPools) {
+            acid.mesh.children[0].material.opacity = 0.4 + Math.sin(this.time * 3) * 0.1;
+        }
+
+        // Portal
+        if (this.goal) {
+            this.goal.children[0].material.opacity = 0.2 + Math.sin(this.time * 3) * 0.08;
+        }
+    }
+}

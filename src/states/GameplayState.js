@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
 import { Level1 } from '../levels/Level1.js';
 import { Level2 } from '../levels/Level2.js';
+import { Level4 } from '../levels/Level4.js';
 import { Player } from '../entities/Player.js';
 import { ProgressManager } from '../core/ProgressManager.js';
 
@@ -87,6 +88,9 @@ export class GameplayState {
         switch (this.levelIndex) {
             case 2:
                 this.level = new Level2(scene);
+                break;
+            case 4:
+                this.level = new Level4(scene);
                 break;
             default:
                 this.level = new Level1(scene);
