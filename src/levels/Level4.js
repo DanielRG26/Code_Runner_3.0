@@ -124,33 +124,105 @@ export class Level4 {
                 uniform float uTime;
                 varying vec2 vUv;
                 void main() {
-                    vec3 col = vec3(0.01, 0.01, 0.025);
-                    float gx = step(0.98, fract(vUv.x * 30.0));
-                    float gy = step(0.98, fract(vUv.y * 18.0));
-                    col += (gx + gy) * vec3(0.012, 0.015, 0.02);
-                    col += sin(vUv.y * 500.0 + uTime * 2.0) * 0.005;
-                    float noise = fract(sin(dot(vUv * 80.0 + uTime * 0.05, vec2(12.9898, 78.233))) * 43758.5453);
-                    col += noise * 0.004;
-                    float vig = 1.0 - length((vUv - 0.5) * 1.3) * 0.35;
-                    col *= vig;
+                    // Base oscura con tinte rojo/púrpura (núcleo corrupto)
+                    vec3 col = mix(vec3(0.03, 0.01, 0.04), vec3(0.05, 0.02, 0.06), vUv.y);
+                    // Grid de datos corrupto
+                    float gx = step(0.97, fract(vUv.x * 22.0));
+                    float gy = step(0.97, fract(vUv.y * 14.0));
+                    col += (gx + gy) * vec3(0.02, 0.005, 0.025);
+                    // Líneas horizontales de datos
+                    float hline = step(0.993, fract(vUv.y * 35.0));
+                    col += hline * vec3(0.03, 0.0, 0.02);
+                    // Scanlines
+                    col += sin(vUv.y * 400.0 + uTime * 1.5) * vec3(0.003, 0.001, 0.004);
+                    // Niebla roja abajo (zona de peligro)
+                    float fog = smoothstep(0.35, 0.0, vUv.y) * 0.25;
+                    col += fog * vec3(0.4, 0.05, 0.08);
+                    // Pulso de corrupción
+                    float pulse = sin(uTime * 0.8 + vUv.x * 3.0) * 0.5 + 0.5;
+                    col += pulse * vec3(0.015, 0.0, 0.02) * smoothstep(0.7, 1.0, vUv.x);
+                    // Noise estático
+                    float noise = fract(sin(dot(vUv * 60.0 + uTime * 0.03, vec2(12.9898, 78.233))) * 43758.5453);
+                    col += noise * 0.005;
+                    // Viñeta
+                    float vig = 1.0 - length((vUv - 0.5) * 1.5);
+                    col *= max(vig, 0.0);
                     gl_FragColor = vec4(col, 1.0);
                 }
             `
         });
         const bg = new THREE.Mesh(bgGeo, bgMat);
-        bg.position.z = -5;
+        bg.position.z = -6;
         this.scene.add(bg);
         this.bgMaterial = bgMat;
 
-        // Cables
-        for (let i = 0; i < 20; i++) {
-            const x = -600 + i * 100;
-            const len = 60 + Math.random() * 100;
+        // Tuberías de datos horizontales (decorativas)
+        const pipes = [
+            { x: -200, y: 80, w: 500, h: 6 },
+            { x: 300, y: 120, w: 400, h: 5 },
+            { x: 700, y: 60, w: 350, h: 6 },
+            { x: -400, y: 140, w: 300, h: 5 },
+            { x: 1000, y: 100, w: 400, h: 6 },
+        ];
+        pipes.forEach(p => {
+            const group = new THREE.Group();
+            const geo = new THREE.PlaneGeometry(p.w, p.h);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x1a1020, transparent: true, opacity: 0.6 });
+            group.add(new THREE.Mesh(geo, mat));
+            // Borde luminoso rojo
+            const edgeGeo = new THREE.PlaneGeometry(p.w, 1.5);
+            const edgeMat = new THREE.MeshBasicMaterial({ color: 0xff2020, transparent: true, opacity: 0.12 });
+            const edge = new THREE.Mesh(edgeGeo, edgeMat);
+            edge.position.set(0, p.h / 2, 0.1);
+            group.add(edge);
+            // Conectores
+            const connCount = Math.floor(p.w / 60);
+            for (let i = 0; i < connCount; i++) {
+                const cg = new THREE.PlaneGeometry(4, p.h + 4);
+                const cm = new THREE.MeshBasicMaterial({ color: 0x201020, transparent: true, opacity: 0.6 });
+                const c = new THREE.Mesh(cg, cm);
+                c.position.set(-p.w / 2 + 30 + i * 60, 0, 0.1);
+                group.add(c);
+            }
+            group.position.set(p.x, p.y, -3);
+            this.scene.add(group);
+        });
+
+        // Cables verticales colgantes
+        for (let i = 0; i < 24; i++) {
+            const x = -600 + i * 90;
+            const len = 50 + Math.random() * 120;
             const geo = new THREE.PlaneGeometry(1.5, len);
-            const mat = new THREE.MeshBasicMaterial({ color: 0x141420, transparent: true, opacity: 0.4 });
+            const mat = new THREE.MeshBasicMaterial({ color: 0x1a0a1a, transparent: true, opacity: 0.45 });
             const cable = new THREE.Mesh(geo, mat);
-            cable.position.set(x, 280 - len / 2, -3);
+            cable.position.set(x, 280 - len / 2, -4);
             this.scene.add(cable);
+        }
+
+        // Partículas de corrupción flotantes
+        for (let i = 0; i < 15; i++) {
+            const size = 2 + Math.random() * 3;
+            const geo = new THREE.PlaneGeometry(size, size);
+            const mat = new THREE.MeshBasicMaterial({
+                color: Math.random() > 0.5 ? 0xff3030 : 0x8800aa,
+                transparent: true, opacity: 0.15 + Math.random() * 0.2
+            });
+            const particle = new THREE.Mesh(geo, mat);
+            particle.position.set(
+                -500 + Math.random() * 1800,
+                -150 + Math.random() * 350,
+                -2
+            );
+            particle.userData = {
+                baseX: particle.position.x,
+                baseY: particle.position.y,
+                sx: 0.3 + Math.random() * 0.6,
+                sy: 0.4 + Math.random() * 0.8,
+                phase: Math.random() * 6.28
+            };
+            this.scene.add(particle);
+            if (!this._particles) this._particles = [];
+            this._particles.push(particle);
         }
     }
 
@@ -507,6 +579,16 @@ export class Level4 {
         // Acido pulsante
         for (const acid of this.acidPools) {
             acid.mesh.children[0].material.opacity = 0.4 + Math.sin(this.time * 3) * 0.1;
+        }
+
+        // Partículas de corrupción
+        if (this._particles) {
+            for (const p of this._particles) {
+                const d = p.userData;
+                p.position.x = d.baseX + Math.sin(this.time * d.sx + d.phase) * 15;
+                p.position.y = d.baseY + Math.sin(this.time * d.sy + d.phase) * 10;
+                p.material.opacity = 0.1 + Math.sin(this.time * 2 + d.phase) * 0.1;
+            }
         }
 
         // Portal
