@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { STATES } from './GameStateManager.js';
 import { Level1 } from '../levels/Level1.js';
+import { Level1_1 } from '../levels/Level1_1.js';
 import { Level2 } from '../levels/Level2.js';
 import { Player } from '../entities/Player.js';
 import { ProgressManager } from '../core/ProgressManager.js';
@@ -26,6 +27,11 @@ export class GameplayState {
         this.player = null;
         this.level = null;
 
+        // Sistema de vidas (solo para Level1_1)
+        this.maxLives = 5;
+        this.currentLives = 5;
+        this.hasLivesSystem = (this.levelIndex === 1); // Solo Level1_1
+
         // Input state
         this.keys = {};
         this.gravity = -600;
@@ -40,6 +46,7 @@ export class GameplayState {
         this.hudButtons = document.getElementById('hud-buttons');
         this.hudFragments = document.getElementById('hud-fragments');
         this.hudTime = document.getElementById('hud-time');
+        this.hudLives = document.getElementById('hud-lives');
         this.stateIndicator = document.getElementById('state-indicator');
         this.levelCompleteUI = document.getElementById('level-complete');
         this.starsDisplay = document.getElementById('stars-display');
@@ -85,6 +92,9 @@ export class GameplayState {
 
         // Crear nivel
         switch (this.levelIndex) {
+            case 1:
+                this.level = new Level1_1(scene);
+                break;
             case 2:
                 this.level = new Level2(scene);
                 break;
@@ -110,6 +120,14 @@ export class GameplayState {
         this.hudButtons.style.display = 'flex';
         this.stateIndicator.style.display = 'block';
         this.updateStateIndicator();
+
+        // Mostrar vidas solo en Level1_1
+        if (this.hasLivesSystem) {
+            this.hudLives.style.display = 'flex';
+            this.updateLivesDisplay();
+        } else {
+            this.hudLives.style.display = 'none';
+        }
 
         // Cámara
         this.renderer.camera.position.x = this.level.cameraCenter.x;
@@ -184,22 +202,70 @@ export class GameplayState {
         this.stateIndicator.style.display = 'block';
     }
 
+    updateLivesDisplay() {
+        const hearts = this.hudLives.querySelectorAll('.heart');
+        hearts.forEach((heart, index) => {
+            if (index < this.currentLives) {
+                heart.classList.remove('lost');
+            } else {
+                heart.classList.add('lost');
+            }
+        });
+    }
+
+    loseLife() {
+        if (!this.hasLivesSystem) return false;
+        
+        this.currentLives--;
+        this.updateLivesDisplay();
+        
+        // Mostrar mensaje de vidas restantes
+        if (this.currentLives > 0) {
+            this.showMessage(
+                '> VIDA PERDIDA',
+                `Te quedan ${this.currentLives} vida${this.currentLives !== 1 ? 's' : ''}. ¡Ten cuidado!`,
+                'warning'
+            );
+        } else {
+            this.showMessage(
+                '> SIN VIDAS',
+                'Has perdido todas tus vidas. Regresando al menú principal...',
+                'warning'
+            );
+        }
+        
+        return this.currentLives <= 0;
+    }
+
     handlePhysics(delta) {
         if (this.gameOver || this.levelComplete || this.showingTutorial || this.isPaused) return;
 
         let dx = 0;
+        const isCrouchingNow = this.keys['s'] || this.keys['arrowdown'];
 
         // Movimiento horizontal
         if (this.keys['a'] || this.keys['arrowleft']) {
             dx = -this.moveSpeed * delta;
-            if (this.isGrounded) this.player.setAnimation('WALK');
+            if (isCrouchingNow) {
+                // Caminar agachado (más lento)
+                dx *= 0.6;
+                this.player.setAnimation('CROUCH');
+            } else if (this.isGrounded) {
+                this.player.setAnimation('WALK');
+            }
             this.player.faceDirection(false);
         } else if (this.keys['d'] || this.keys['arrowright']) {
             dx = this.moveSpeed * delta;
-            if (this.isGrounded) this.player.setAnimation('WALK');
+            if (isCrouchingNow) {
+                // Caminar agachado (más lento)
+                dx *= 0.6;
+                this.player.setAnimation('CROUCH');
+            } else if (this.isGrounded) {
+                this.player.setAnimation('WALK');
+            }
             this.player.faceDirection(true);
-        } else if (this.keys['s'] || this.keys['arrowdown']) {
-            // Agacharse
+        } else if (isCrouchingNow) {
+            // Agacharse sin moverse
             this.player.setAnimation('CROUCH');
         } else if (this.isGrounded) {
             this.player.setAnimation('IDLE');
@@ -262,6 +328,18 @@ export class GameplayState {
             return;
         }
 
+        // Colisión con obstáculos de techo (Level1_1)
+        if (this.level.checkCeilingCollision && this.level.checkCeilingCollision(this.player)) {
+            this.handleDeath();
+            return;
+        }
+
+        // Colisión con lava (Level1_1)
+        if (this.level.checkLavaCollision && this.level.checkLavaCollision(this.player)) {
+            this.handleDeath();
+            return;
+        }
+
         // Colisión con ácido (nivel 2)
         if (this.level.checkAcidCollision && this.level.checkAcidCollision(this.player)) {
             this.handleDeath();
@@ -317,12 +395,49 @@ export class GameplayState {
     }
 
     handleDeath() {
-        if (this.gameOver) return;
+        // Para Level1_1 con sistema de vidas, permitir múltiples muertes
+        if (this.hasLivesSystem && this.currentLives > 0) {
+            // No bloquear si aún tiene vidas
+        } else if (this.gameOver) {
+            return;
+        }
+        
         this.audio.playError();
         this.player.playDeathAnimation();
 
+        // Sistema de vidas para Level1_1
+        if (this.hasLivesSystem) {
+            const noLivesLeft = this.loseLife();
+            
+            if (noLivesLeft) {
+                // Sin vidas: marcar game over y mostrar mensaje
+                this.gameOver = true;
+                setTimeout(() => {
+                    this.hideMessage();
+                    // Ir al menú principal cuando pierde todas las vidas
+                    this.stateManager.changeState(STATES.MAIN_MENU);
+                }, 2500);
+                return;
+            } else {
+                // Aún tiene vidas: solo reposicionar al jugador
+                this.keys = {};
+                this.playerVelY = 0;
+                this.isGrounded = false;
+                setTimeout(() => {
+                    this.hideMessage();
+                    // Solo resetear posición del jugador, NO las vidas
+                    this.player.reset(this.level.spawnPoint.x, this.level.spawnPoint.y);
+                    this.player.position.x = this.level.spawnPoint.x;
+                    this.player.position.y = this.level.spawnPoint.y;
+                    this.player.updatePosition();
+                    // Mantener fragmentos y tiempo
+                }, 1500);
+                return;
+            }
+        }
+
         // Nivel 2+: respawn en checkpoint, no game over inmediato
-        if (this.levelIndex >= 1 && this.level.activeCheckpoint) {
+        if (this.levelIndex >= 2 && this.level.activeCheckpoint) {
             this.keys = {};
             this.playerVelY = 0;
             this.isGrounded = false;
@@ -346,7 +461,12 @@ export class GameplayState {
     onGoRetry() {
         this.audio.playClick();
         this.gameOverUI.classList.remove('visible');
-        this.resetLevel();
+        // Para Level1_1 con sistema de vidas, NO resetear vidas
+        if (this.hasLivesSystem) {
+            this.resetLevel();  // Solo resetea posición, NO vidas
+        } else {
+            this.fullReset();  // Reset completo para otros niveles
+        }
     }
 
     onGoMenu() {
@@ -371,7 +491,12 @@ export class GameplayState {
         this.audio.playClick();
         this.pauseOverlay.classList.remove('visible');
         this.isPaused = false;
-        this.resetLevel();
+        // Para Level1_1 con sistema de vidas, NO resetear vidas
+        if (this.hasLivesSystem) {
+            this.resetLevel();  // Solo resetea posición, NO vidas
+        } else {
+            this.fullReset();  // Reset completo para otros niveles
+        }
     }
 
     onPauseMenu() {
@@ -394,6 +519,32 @@ export class GameplayState {
         this.isGrounded = false;
         this.keys = {};
 
+        // NO resetear vidas aquí - solo se resetean al entrar al nivel o reiniciar manualmente
+        // Las vidas se mantienen entre muertes
+
+        this.player.reset(this.level.spawnPoint.x, this.level.spawnPoint.y);
+        this.level.reset();
+
+        this.hudFragments.textContent = `FRAGMENTOS: 0/${this.totalFragments}`;
+        this.hudTime.textContent = 'TIEMPO: 0s';
+        this.updateStateIndicator();
+    }
+
+    // Nueva función para resetear completamente (incluyendo vidas)
+    fullReset() {
+        this.gameOver = false;
+        this.fragmentsCollected = 0;
+        this.gameTime = 0;
+        this.playerVelY = 0;
+        this.isGrounded = false;
+        this.keys = {};
+
+        // Resetear vidas solo en reset completo
+        if (this.hasLivesSystem) {
+            this.currentLives = this.maxLives;
+            this.updateLivesDisplay();
+        }
+
         this.player.reset(this.level.spawnPoint.x, this.level.spawnPoint.y);
         this.level.reset();
 
@@ -409,10 +560,17 @@ export class GameplayState {
         // Guardar progreso
         ProgressManager.saveLevel(this.levelIndex, this.fragmentsCollected, true);
 
-        // Redirigir al selector de niveles después de una breve pausa
-        setTimeout(() => {
-            this.stateManager.changeState(STATES.LEVEL_SELECT);
-        }, 1200);
+        // Si es Level1_1, ir directamente al Level2
+        if (this.levelIndex === 1) {
+            setTimeout(() => {
+                this.stateManager.changeState(STATES.GAMEPLAY, { level: 2 });
+            }, 1200);
+        } else {
+            // Para otros niveles, redirigir al selector de niveles
+            setTimeout(() => {
+                this.stateManager.changeState(STATES.LEVEL_SELECT);
+            }, 1200);
+        }
     }
 
     calculateStars() {
@@ -426,7 +584,12 @@ export class GameplayState {
         this.audio.playClick();
         this.levelCompleteUI.style.display = 'none';
         this.levelComplete = false;
-        this.resetLevel();
+        // Para Level1_1 con sistema de vidas, NO resetear vidas
+        if (this.hasLivesSystem) {
+            this.resetLevel();  // Solo resetea posición, NO vidas
+        } else {
+            this.fullReset();  // Reset completo para otros niveles
+        }
     }
 
     onMenu() {
@@ -482,6 +645,7 @@ export class GameplayState {
         this.controlsPanel.style.display = 'none';
         this.hud.style.display = 'none';
         this.hudButtons.style.display = 'none';
+        this.hudLives.style.display = 'none';
         this.stateIndicator.style.display = 'none';
         this.levelCompleteUI.style.display = 'none';
         this.gameOverUI.classList.remove('visible');

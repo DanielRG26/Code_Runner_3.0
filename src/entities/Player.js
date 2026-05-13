@@ -22,6 +22,7 @@ export class Player {
         this.blinkTimer = 0;
         this.isBlinking = false;
         this.facingRight = true;
+        this.isCrouching = false;  // Estado de agachado
 
         this.createMesh();
         this.updatePosition();
@@ -333,6 +334,8 @@ export class Player {
             this.animation = anim;
             this.animFrame = 0;
         }
+        // Actualizar estado de agachado
+        this.isCrouching = (anim === ANIM.CROUCH);
     }
 
     faceDirection(right) {
@@ -359,6 +362,7 @@ export class Player {
         this.state = 'RED';
         this.animation = ANIM.IDLE;
         this.facingRight = true;
+        this.isCrouching = false;
         this.spriteMesh.scale.x = 1;
         this.updateColors();
         this.drawSprite();

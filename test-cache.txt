@@ -1,0 +1,2 @@
+ARCHIVO DE PRUEBA - Si ves esto, el servidor está funcionando correctamente.
+Timestamp: 2026-05-13 00:50:00

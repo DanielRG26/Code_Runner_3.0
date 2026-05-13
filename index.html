@@ -144,12 +144,32 @@
         #hud {
             display: none;
             position: absolute;
-            top: 14px; left: 14px;
+            top: 50px; left: 14px;
             color: #00e5ff;
             font-size: 13px;
             text-shadow: 0 0 6px #00e5ff66;
         }
         #hud .hud-item { margin-bottom: 5px; }
+
+        /* HUD Lives (corazones) */
+        #hud-lives {
+            display: none;
+            position: absolute;
+            top: 14px; left: 14px;
+            font-size: 20px;
+            gap: 8px;
+        }
+        #hud-lives .heart {
+            display: inline-block;
+            color: #ff3030;
+            text-shadow: 0 0 8px #ff303088;
+            transition: all 0.3s;
+        }
+        #hud-lives .heart.lost {
+            color: #333333;
+            text-shadow: none;
+            opacity: 0.3;
+        }
 
         /* HUD Buttons (pause, menu) */
         #hud-buttons {
@@ -407,6 +427,13 @@
         <div id="hud">
             <div class="hud-item" id="hud-fragments">FRAGMENTOS: 0/3</div>
             <div class="hud-item" id="hud-time">TIEMPO: 0s</div>
+        </div>
+        <div id="hud-lives">
+            <span class="heart">❤</span>
+            <span class="heart">❤</span>
+            <span class="heart">❤</span>
+            <span class="heart">❤</span>
+            <span class="heart">❤</span>
         </div>
         <div id="hud-buttons">
             <button id="btn-pause"><span class="btn-icon">⏸</span> PAUSA</button>
