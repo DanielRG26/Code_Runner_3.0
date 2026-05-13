@@ -36,7 +36,7 @@ export class Level4 {
             [-20, -10, 80, 16],
 
             // === SECCIÓN 3: Corredor de láseres (plano largo) ===
-            [130, -10, 300, 20],
+            [130, -10, 350, 20],
 
             // === SECCIÓN 4: Descenso rápido ===
             [470, -40, 70, 16],
@@ -78,33 +78,34 @@ export class Level4 {
 
         // Plataformas que desaparecen (4 - más tensión)
         this.disappearingPlatformData = [
-            { x: 50, y: -10, w: 55, h: 12, onTime: 2.5, offTime: 1.3 },
+            { x: -70, y: -10, w: 55, h: 12, onTime: 2.5, offTime: 1.3 },
             { x: 840, y: -85, w: 50, h: 12, onTime: 2.2, offTime: 1.5 },
             { x: 1180, y: -60, w: 55, h: 12, onTime: 2.0, offTime: 1.4 },
             { x: 1660, y: -10, w: 55, h: 12, onTime: 2.3, offTime: 1.2 },
         ];
 
         // Laseres con timing (6 - corredor de láseres más intenso)
+        // Separados 80px entre sí, offTime de 2.2s = ventana amplia para pasar corriendo
         this.laserData = [
-            // Corredor de láseres sección 3 (secuencia rítmica)
-            { x: 170, y: 35, width: 4, height: 50, onTime: 1.5, offTime: 1.8, phase: 0 },
-            { x: 230, y: 35, width: 4, height: 50, onTime: 1.5, offTime: 1.8, phase: 0.9 },
-            { x: 290, y: 35, width: 4, height: 50, onTime: 1.5, offTime: 1.8, phase: 1.8 },
-            { x: 350, y: 35, width: 4, height: 50, onTime: 1.5, offTime: 1.8, phase: 2.7 },
-            // Sección 6 - láseres en la subida
-            { x: 1300, y: -75, width: 4, height: 45, onTime: 1.3, offTime: 2.0, phase: 0.5 },
+            // Corredor de láseres sección 3 (secuencia rítmica, uno a la vez)
+            { x: 180, y: 35, width: 4, height: 50, onTime: 1.2, offTime: 2.5, phase: 0 },
+            { x: 260, y: 35, width: 4, height: 50, onTime: 1.2, offTime: 2.5, phase: 1.5 },
+            { x: 340, y: 35, width: 4, height: 50, onTime: 1.2, offTime: 2.5, phase: 3.0 },
+            { x: 420, y: 35, width: 4, height: 50, onTime: 1.2, offTime: 2.5, phase: 4.5 },
+            // Sección 6 - láser en la subida
+            { x: 1300, y: -75, width: 4, height: 40, onTime: 1.3, offTime: 2.2, phase: 0.5 },
             // Sección 7 - láser antes de la meta
-            { x: 1780, y: 5, width: 4, height: 45, onTime: 1.4, offTime: 1.8, phase: 1.0 },
+            { x: 1780, y: 5, width: 4, height: 40, onTime: 1.4, offTime: 2.0, phase: 1.0 },
         ];
 
-        // Centinelas enemigos (3 - más peligro)
+        // Centinelas enemigos (3 - en zonas SIN láseres)
         this.sentinelData = [
-            // Patrulla en corredor de láseres
-            { x: 200, y: 18, patrolLeft: 140, patrolRight: 400, speed: 45 },
-            // Patrulla en sección 6
-            { x: 1400, y: -2, patrolLeft: 1370, patrolRight: 1540, speed: 38 },
-            // Patrulla final antes de meta
-            { x: 2000, y: 78, patrolLeft: 1990, patrolRight: 2120, speed: 50 },
+            // Patrulla en sección 5 (plataformas pequeñas)
+            { x: 890, y: -92, patrolLeft: 790, patrolRight: 990, speed: 35 },
+            // Patrulla en sección 6 (plataforma larga)
+            { x: 1400, y: -2, patrolLeft: 1370, patrolRight: 1540, speed: 42 },
+            // Patrulla final en meta
+            { x: 2020, y: 78, patrolLeft: 1990, patrolRight: 2120, speed: 48 },
         ];
 
         // Acido en el suelo (más charcos, cubren los huecos)
