@@ -8,6 +8,7 @@ import { STATES } from './GameStateManager.js';
 import { Level1 } from '../levels/Level1.js';
 import { Level1_1 } from '../levels/Level1_1.js';
 import { Level2 } from '../levels/Level2.js';
+import { Level4 } from '../levels/Level4.js';
 import { Player } from '../entities/Player.js';
 import { ProgressManager } from '../core/ProgressManager.js';
 
@@ -98,10 +99,20 @@ export class GameplayState {
             case 2:
                 this.level = new Level2(scene);
                 break;
+            case 4:
+                this.level = new Level4(scene);
+                break;
             default:
                 this.level = new Level1(scene);
         }
         this.level.build();
+
+        // Si el nivel define totalFragments, usar ese valor
+        if (this.level.totalFragments) {
+            this.totalFragments = this.level.totalFragments;
+        } else {
+            this.totalFragments = 3;
+        }
 
         // Crear jugador
         this.player = new Player(scene, this.level.spawnPoint.x, this.level.spawnPoint.y);
@@ -119,6 +130,7 @@ export class GameplayState {
         this.hud.style.display = 'block';
         this.hudButtons.style.display = 'flex';
         this.stateIndicator.style.display = 'block';
+        this.hudFragments.textContent = `FRAGMENTOS: 0/${this.totalFragments}`;
         this.updateStateIndicator();
 
         // Mostrar vidas solo en Level1_1
@@ -623,6 +635,13 @@ export class GameplayState {
         // Actualizar entidades
         if (this.player) {
             this.player.update(delta);
+
+            // Cámara sigue al jugador suavemente
+            const cam = this.renderer.camera;
+            const targetX = this.player.position.x;
+            const targetY = this.player.position.y + 30;
+            cam.position.x += (targetX - cam.position.x) * 0.08;
+            cam.position.y += (targetY - cam.position.y) * 0.06;
         }
         if (this.level) {
             this.level.update(delta);

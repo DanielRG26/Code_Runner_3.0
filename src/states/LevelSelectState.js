@@ -26,6 +26,10 @@ export class LevelSelectState {
         const scene = this.renderer.scene;
         scene.background = new THREE.Color(0x080810);
 
+        // Resetear cámara al centro
+        this.renderer.camera.position.x = 0;
+        this.renderer.camera.position.y = 0;
+
         this.createBackground(scene);
 
         // Título
@@ -46,7 +50,7 @@ export class LevelSelectState {
             { name: '> NIVEL_1: LABERINTO',    icon: '◠', unlocked: true  },
             { name: '> NIVEL_2: ZONA QUÍMICA', icon: '⚗', unlocked: true  },
             { name: '> NIVEL_3',               icon: '⚡', unlocked: false },
-            { name: '> NIVEL_4',               icon: '⚙', unlocked: false },
+            { name: '> NIVEL_4: NÚCLEO CORRUPTO', icon: '⚙', unlocked: true  },
             { name: '> NIVEL_5',               icon: '✦', unlocked: false }
         ];
 
