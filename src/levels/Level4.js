@@ -19,115 +19,121 @@ export class Level4 {
         this.time = 0;
         this._laserGlows = [];
 
-        this.spawnPoint = { x: -580, y: -40 };
-        this.cameraCenter = { x: 100, y: -20 };
-        this.deathY = -280;
+        // Spawn: izquierda, plataforma elevada (como referencia)
+        this.spawnPoint = { x: -1100, y: 30 };
+        this.cameraCenter = { x: 0, y: 0 };
+        this.deathY = -240;
 
-        // Plataformas estaticas [x, y, w, h]
-        // Diseño: recorrido largo con secciones temáticas, sin sobreposiciones
+        // Plataformas estáticas - 7 ZONAS con dificultad creciente
         this.platformData = [
-            // === SECCIÓN 1: Inicio seguro ===
-            [-580, -100, 140, 20],
-            [-400, -100, 100, 20],
+            // === ZONA 1: INTRODUCCIÓN (Aprende) ===
+            // Spawn alto izquierda + bajada
+            [-1150, 0, 130, 24],         // Spawn principal
+            [-1000, -40, 80, 16],
+            [-880, -80, 80, 16],
+            [-760, -120, 100, 24],       // Suelo zona 1
 
-            // === SECCIÓN 2: Escalera ascendente ===
-            [-260, -70, 80, 16],
-            [-140, -40, 80, 16],
-            [-20, -10, 80, 16],
+            // === ZONA 2: RITMO (Láser + Espera) ===
+            // Plataforma con láser que se enciende/apaga - hay que esperar
+            [-580, -120, 160, 24],
+            [-380, -60, 120, 16],
+            [-210, -120, 140, 24],
 
-            // === SECCIÓN 3: Corredor de láseres (plano largo) ===
-            [130, -10, 350, 20],
+            // === ZONA 3: OBSERVA (Plataformas) ===
+            // Subida con escalones y plataforma elevada
+            [-30, -80, 90, 16],
+            [110, -40, 90, 16],
+            [240, 0, 100, 16],
+            [380, -40, 80, 16],
 
-            // === SECCIÓN 4: Descenso rápido ===
-            [470, -40, 70, 16],
-            [570, -80, 70, 16],
-            [670, -120, 70, 16],
+            // === ZONA 4: SINCRONIZA (Móviles) ===
+            // Plataformas móviles para cruzar
+            [510, -80, 100, 16],
+            [770, -80, 100, 16],
 
-            // === SECCIÓN 5: Zona baja con ácido - plataformas pequeñas ===
-            [790, -120, 60, 14],
-            [890, -120, 60, 14],
-            [990, -120, 60, 14],
+            // === ZONA 5: PRECISIÓN (Riesgo Medio) ===
+            // Saltos precisos con láseres y plataformas pequeñas
+            [930, -40, 70, 16],
+            [1060, 0, 70, 16],
+            [1190, 40, 70, 16],
+            [1320, 0, 80, 16],
 
-            // === SECCIÓN 6: Subida con centinela ===
-            [1120, -90, 70, 16],
-            [1240, -60, 70, 16],
-            [1360, -30, 200, 20],
+            // === ZONA 6: CONTROL (Elevador) ===
+            // Subida con elevador móvil + plataforma alta
+            [1480, 30, 100, 16],
+            [1640, 80, 100, 16],
 
-            // === SECCIÓN 7: Plataformas altas finales ===
-            [1600, -30, 70, 16],
-            [1720, 10, 70, 16],
-            [1840, 50, 80, 16],
-
-            // === SECCIÓN 8: Meta ===
-            [1980, 50, 160, 20],
+            // === ZONA 7: DECISIÓN (Final) ===
+            // Plataformas finales hacia la meta
+            [1820, 110, 80, 16],
+            [1960, 140, 200, 30],         // Meta - plataforma con la puerta
         ];
 
-        // Plataformas moviles (5 - más movimiento)
+        // Plataformas móviles (zona 4 principal + ayudas)
         this.movingPlatformData = [
-            // Puente entre sección 1 y 2
-            { x: -330, y: -70, w: 60, h: 14, moveX: 40, moveY: 0, speed: 0.9 },
-            // Ayuda en sección 4-5
-            { x: 730, y: -90, w: 60, h: 14, moveX: 0, moveY: 30, speed: 0.7 },
-            // Entre plataformas pequeñas sección 5
-            { x: 940, y: -80, w: 55, h: 14, moveX: 40, moveY: 0, speed: 1.1 },
-            // Subida sección 6-7
-            { x: 1480, y: -10, w: 60, h: 14, moveX: 0, moveY: 35, speed: 0.8 },
-            // Antes de la meta
-            { x: 1900, y: 30, w: 60, h: 14, moveX: 50, moveY: 0, speed: 1.2 },
+            // Zona 4: SINCRONIZA - 2 plataformas móviles horizontales (núcleo)
+            { x: 660, y: -50, w: 60, h: 14, moveX: 50, moveY: 0, speed: 0.9 },
+            { x: 870, y: -50, w: 60, h: 14, moveX: 0, moveY: 30, speed: 0.8 },
+            // Zona 6: CONTROL - elevador vertical
+            { x: 1560, y: 60, w: 70, h: 14, moveX: 0, moveY: 35, speed: 0.7 },
+            // Zona 7: ayuda final
+            { x: 1900, y: 120, w: 55, h: 14, moveX: 30, moveY: 0, speed: 1.0 },
         ];
 
-        // Plataformas que desaparecen (4 - más tensión)
+        // Plataformas que desaparecen (atajos en zona 5)
         this.disappearingPlatformData = [
-            { x: -70, y: -10, w: 55, h: 12, onTime: 2.5, offTime: 1.3 },
-            { x: 840, y: -85, w: 50, h: 12, onTime: 2.2, offTime: 1.5 },
-            { x: 1180, y: -60, w: 55, h: 12, onTime: 2.0, offTime: 1.4 },
-            { x: 1660, y: -10, w: 55, h: 12, onTime: 2.3, offTime: 1.2 },
+            { x: 1130, y: 25, w: 50, h: 12, onTime: 2.4, offTime: 1.4 },
+            { x: 1260, y: 25, w: 50, h: 12, onTime: 2.4, offTime: 1.4 },
         ];
 
-        // Laseres con timing (6 - corredor de láseres más intenso)
-        // Separados 80px entre sí, offTime de 2.2s = ventana amplia para pasar corriendo
+        // Láseres - distribuidos por zonas según el diseño
         this.laserData = [
-            // Corredor de láseres sección 3 (secuencia rítmica, uno a la vez)
-            { x: 180, y: 35, width: 4, height: 50, onTime: 1.2, offTime: 2.5, phase: 0 },
-            { x: 260, y: 35, width: 4, height: 50, onTime: 1.2, offTime: 2.5, phase: 1.5 },
-            { x: 340, y: 35, width: 4, height: 50, onTime: 1.2, offTime: 2.5, phase: 3.0 },
-            { x: 420, y: 35, width: 4, height: 50, onTime: 1.2, offTime: 2.5, phase: 4.5 },
-            // Sección 6 - láser en la subida
-            { x: 1300, y: -75, width: 4, height: 40, onTime: 1.3, offTime: 2.2, phase: 0.5 },
-            // Sección 7 - láser antes de la meta
-            { x: 1780, y: 5, width: 4, height: 40, onTime: 1.4, offTime: 2.0, phase: 1.0 },
-        ];
+            // Zona 2: RITMO - láser principal que enseña timing
+            [-470, -55, 4, 60, 1.8, 2.5, 0],
+            // Zona 3: OBSERVA - láser entre escalones
+            [60, -10, 4, 60, 1.5, 2.2, 0.5],
+            // Zona 5: PRECISIÓN - 2 láseres en secuencia
+            [990, 5, 4, 60, 1.4, 2.0, 0],
+            [1130, 80, 4, 50, 1.3, 2.0, 1.2],
+            // Zona 7: DECISIÓN - láser antes de la meta
+            [1880, 175, 4, 50, 1.4, 2.0, 0.8],
+        ].map(([x, y, width, height, onTime, offTime, phase]) => ({
+            x, y, width, height, onTime, offTime, phase
+        }));
 
-        // Centinelas enemigos (3 - en zonas SIN láseres)
+        // Centinelas - en plataformas clave (uno por zona crítica)
         this.sentinelData = [
-            // Patrulla en sección 5 (plataformas pequeñas)
-            { x: 890, y: -92, patrolLeft: 790, patrolRight: 990, speed: 35 },
-            // Patrulla en sección 6 (plataforma larga)
-            { x: 1400, y: -2, patrolLeft: 1370, patrolRight: 1540, speed: 42 },
-            // Patrulla final en meta
-            { x: 2020, y: 78, patrolLeft: 1990, patrolRight: 2120, speed: 48 },
+            // Zona 1
+            { x: -890, y: -102, patrolLeft: -930, patrolRight: -830, speed: 32 },
+            // Zona 2
+            { x: -290, y: -102, patrolLeft: -270, patrolRight: -150, speed: 38 },
+            // Zona 5
+            { x: 1210, y: 62, patrolLeft: 1170, patrolRight: 1230, speed: 35 },
+            // Zona 7 (cerca de la meta)
+            { x: 1850, y: 132, patrolLeft: 1810, patrolRight: 1900, speed: 42 },
         ];
 
-        // Acido en el suelo (más charcos, cubren los huecos)
-        this.acidData = [
-            { x: -330, y: -230, w: 60, h: 18 },
-            { x: -200, y: -230, w: 60, h: 18 },
-            { x: 450, y: -230, w: 70, h: 18 },
-            { x: 630, y: -230, w: 70, h: 18 },
-            { x: 790, y: -230, w: 200, h: 18 },
-            { x: 1050, y: -230, w: 80, h: 18 },
-            { x: 1500, y: -230, w: 80, h: 18 },
-            { x: 1750, y: -230, w: 80, h: 18 },
-        ];
+        // Ácido continuo en el suelo (debajo de todo)
+        this.acidData = [];
+        for (let x = -1100; x <= 2000; x += 100) {
+            this.acidData.push({ x, y: -210, w: 90, h: 18 });
+        }
 
-        // Fragmentos en posiciones que requieren desvío o riesgo
+        // 9 Fragmentos distribuidos en las 7 zonas (algunos requieren riesgo)
         this.fragmentData = [
-            { x: -140, y: -5 },    // Sobre escalera, fácil si subes
-            { x: 940, y: -50 },    // Sobre plataforma móvil en zona de ácido
-            { x: 1840, y: 85 },    // Arriba en la sección final
+            { x: -1080, y: 60 },     // Zona 1: cerca del spawn
+            { x: -880, y: -50 },     // Zona 1: en escalón
+            { x: -380, y: -25 },     // Zona 2: sobre el láser
+            { x: 240, y: 35 },       // Zona 3: alto
+            { x: 660, y: -15 },      // Zona 4: sobre plataforma móvil
+            { x: 870, y: 0 },        // Zona 4: sobre elevador
+            { x: 1190, y: 75 },      // Zona 5: alto en saltos precisos
+            { x: 1640, y: 115 },     // Zona 6: arriba elevador
+            { x: 1820, y: 145 },     // Zona 7: cerca de la meta
         ];
 
-        this.goalData = { x: 2040, y: 90 };
+        this.totalFragments = 9;
+        this.goalData = { x: 2080, y: 175 };
         this.messageTriggers = [];
     }
 
@@ -144,7 +150,7 @@ export class Level4 {
     }
 
     createBackground() {
-        const bgGeo = new THREE.PlaneGeometry(2200, 800);
+        const bgGeo = new THREE.PlaneGeometry(3500, 800);
         const bgMat = new THREE.ShaderMaterial({
             uniforms: { uTime: { value: 0 } },
             vertexShader: `
@@ -445,7 +451,7 @@ export class Level4 {
     // --- Colisiones ---
 
     canMoveTo(x, y, playerSize) {
-        if (x < -700 || x > 2200) return false;
+        if (x < -1250 || x > 2050) return false;
         if (y > 400) return false;
         return true;
     }

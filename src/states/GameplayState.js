@@ -97,6 +97,13 @@ export class GameplayState {
         }
         this.level.build();
 
+        // Si el nivel define totalFragments, usar ese valor
+        if (this.level.totalFragments) {
+            this.totalFragments = this.level.totalFragments;
+        } else {
+            this.totalFragments = 3;
+        }
+
         // Crear jugador
         this.player = new Player(scene, this.level.spawnPoint.x, this.level.spawnPoint.y);
 
@@ -113,6 +120,7 @@ export class GameplayState {
         this.hud.style.display = 'block';
         this.hudButtons.style.display = 'flex';
         this.stateIndicator.style.display = 'block';
+        this.hudFragments.textContent = `FRAGMENTOS: 0/${this.totalFragments}`;
         this.updateStateIndicator();
 
         // Cámara
